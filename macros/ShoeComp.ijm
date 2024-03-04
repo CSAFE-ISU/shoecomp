@@ -12,7 +12,7 @@ exit();
 <button>
 label=Load Image
 arg=<macro>
-print("Hello");
+call("Image_Loader.callFromMacro");
 </macro>
 
 <separator>
@@ -20,7 +20,7 @@ print("Hello");
 <button>
 label=Save Markup
 arg=<macro>
-print("Hello");
+call("Image_Saver.callFromMacro");
 </macro>
 
 <separator>
@@ -28,7 +28,7 @@ print("Hello");
 <button>
 label=Run Alignment
 arg=<macro>
-print("Hello");
+call("Align_Runner.callFromMacro");
 </macro>
 
 </line>
@@ -38,7 +38,7 @@ print("Hello");
 <button>
 label=About
 arg=<macro>
-print("Hello");
+call("About_Page.callFromMacro");
 </macro>
 
 <separator>
