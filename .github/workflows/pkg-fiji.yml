@@ -27,9 +27,7 @@ jobs:
           java-version: '11'
       - name: build JAR
         run: bash ./.github/scripts/build-jar.sh
-      - name: create plugins folder
-        run: mkdir -p plugins && ls -alh
-      - name: copy plugins
+      - name: copy plugins and macros
         run: bash ./.github/scripts/collect-jars.sh
       - name: package for ${{ matrix.fiji_target }}
         run: bash ./.github/scripts/pkg-${{ matrix.fiji_target }}.sh

@@ -1,7 +1,14 @@
 #!/bin/sh
 set -eu
 
-mkdir -p plugins macros
+mkdir -p Fiji.app
+cd Fiji.app
+
+# copy macros
+cp -r ../macros ./
+
+# copy plugins
+mkdir -p plugins
 cd plugins
 
 echo "copying shoecomp jar..."
