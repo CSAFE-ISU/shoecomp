@@ -34,3 +34,27 @@ jobs:
           file: target/shoecomp-1.0-SNAPSHOT-shaded.jar
           overwrite: true
           asset_name: shoecomp-1.0.jar
+  pkg_fiji:
+    name: package shoecomp JAR into Fiji
+    needs: build_jar
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fiji_target: [linux64, win64, macosx]
+    steps:
+      - name: create plugins folder
+        run: bash ./.github/scripts/collect-jars.sh
+      - name: package for {{ fiji_target }}
+        run: bash ./.github/scripts/pkg-{{ fiji_target }}.sh
+      - name: upload release ZIP
+        id: upload_assets
+        uses: svenstaro/upload-release-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: fiji-{{ fiji_target }}.zip
+          overwrite: true
+          asset_name: shoecomp-fiji-{{ fiji_target }}.zip
