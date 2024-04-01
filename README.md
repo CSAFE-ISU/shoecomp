@@ -24,8 +24,9 @@ This repo contains:
 - icons and related assets
 - A User Manual for ShoeComp
 
-At some point we will have a Github Actions runner that provides releases via
-ZIP files encapsulating all of the above.
+At present we have Github Actions runner that provides the ShoeComp plugin as a
+Java JAR, which can be added to Fiji. Soon we will have a Github Actions runner
+that provides releases via ZIP files encapsulating all of the above.
 
 [ij2]: https://imagej.net/software/imagej2/
 [fiji]: https://imagej.net/software/fiji/

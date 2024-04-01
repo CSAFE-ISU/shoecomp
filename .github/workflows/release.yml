@@ -1,0 +1,36 @@
+name: shoecomp JAR release
+on:
+  workflow_dispatch:
+  release:
+    types: [created]
+  create:
+    tags:
+      - v.*
+
+jobs:
+  build_jar:
+    name: build shoecomp JAR
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        id: checkout_repo
+        uses: actions/checkout@v4
+      - name: setup JDK
+        uses: actions/setup-java@v4
+        id: jdk_setup
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+      - name: build JAR
+        run: bash ./.github/scripts/build-jar.sh
+      - name: upload release assets
+        id: upload_assets
+        uses: svenstaro/upload-release-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/shoecomp-1.0-SNAPSHOT-shaded.jar
+          overwrite: true
+          asset_name: shoecomp-1.0.jar
