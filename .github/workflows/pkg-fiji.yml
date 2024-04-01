@@ -1,4 +1,4 @@
-name: shoecomp JAR release
+name: package shoecomp into FIJI
 on:
   workflow_dispatch:
   release:
@@ -9,8 +9,12 @@ on:
 
 jobs:
   build_jar:
-    name: build shoecomp JAR
+    name: package shoecomp into FIJI
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fiji_target: [linux64, win64, macosx]
     steps:
       - name: checkout repo
         id: checkout_repo
@@ -23,14 +27,20 @@ jobs:
           java-version: '11'
       - name: build JAR
         run: bash ./.github/scripts/build-jar.sh
-      - name: upload release assets
-        id: upload_assets
+      - name: create plugins folder
+        run: mkdir -p plugins && ls -alh
+      - name: copy plugins
+        run: bash ./.github/scripts/collect-jars.sh
+      - name: package for {{ fiji_target }}
+        run: bash ./.github/scripts/pkg-{{ fiji_target }}.sh
+      - name: upload release ZIP
+        id: upload_zip
         uses: svenstaro/upload-release-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/shoecomp-1.0-SNAPSHOT-shaded.jar
+          file: fiji-{{ fiji_target }}.zip
           overwrite: true
-          asset_name: shoecomp-1.0.jar
+          asset_name: shoecomp-fiji-{{ fiji_target }}.zip
