@@ -45,7 +45,7 @@ jobs:
       - name: package for {{ fiji_target }}
         run: bash ./.github/scripts/pkg-{{ fiji_target }}.sh
       - name: upload release ZIP
-        id: upload_assets
+        id: upload_zip
         uses: svenstaro/upload-release-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
