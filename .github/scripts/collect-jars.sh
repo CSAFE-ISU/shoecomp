@@ -12,7 +12,7 @@ mkdir -p plugins
 cd plugins
 
 echo "copying shoecomp jar..."
-cp ../target/shoecomp-1.0-SNAPSHOT-shaded.jar ./shoecomp-1.0.jar
+cp ../../target/shoecomp-1.0-SNAPSHOT-shaded.jar ./shoecomp-1.0.jar
 
 # https://figshare.com/articles/dataset/Custom_toolbars_and_mini_applications_with_Action_Bar/3397603
 echo "downloading action_bar.jar..."
