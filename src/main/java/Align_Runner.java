@@ -372,7 +372,6 @@ public class Align_Runner implements PlugIn {
                                 System.out.println("should be calcing scores");
                                 histPlot = calculateScore(aip, score_name);
                                 histPlot.show();
-                                histPlot.getWindow().setSize(640, 480);
                                 synchronized (status) {
                                     if (status[0] != -1) status[0] = 3;
                                     status.notify();
