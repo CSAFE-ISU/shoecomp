@@ -10,4 +10,5 @@ zip --delete "$FIJI_FILENAME" 'Fiji.app/plugins/*'
 zip --delete "$FIJI_FILENAME" 'Fiji.app/scripts/*'
 zip --delete "$FIJI_FILENAME" 'Fiji.app/images/about/*'
 
-zip -r Fiji.app "$FIJI_FILENAME"
+zip -r "$FIJI_FILENAME" Fiji.app
+unzip -vl "$FIJI_FILENAME" | grep -i "shoecomp"
