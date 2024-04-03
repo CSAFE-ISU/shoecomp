@@ -1,16 +1,15 @@
-run("Action Bar","/macros/ShoeComp.ijm");
-selectWindow("ShoeComp");
-exit();
-
 <main>
-<hide>
 <disableAltClose>
 <disableCtrlAltEdit>
 <hideMenus>
 
+<startupAction>
+eval("js", "IJ.getInstance().setVisible(false)");
+</startupAction>
+
 <line>
 <button>
-label=Load Image
+label=<html><h1 style="font-weight: normal">Load Image</h1></html>
 arg=<macro>
 call("Image_Loader.callFromMacro");
 </macro>
@@ -18,7 +17,7 @@ call("Image_Loader.callFromMacro");
 <separator>
 
 <button>
-label=Save Markup
+label=<html><h1 style="font-weight: normal">Save Markup</h1></html>
 arg=<macro>
 call("Image_Saver.callFromMacro");
 </macro>
@@ -26,7 +25,7 @@ call("Image_Saver.callFromMacro");
 <separator>
 
 <button>
-label=Run Alignment
+label=<html><h1 style="font-weight: normal">Run Alignment</h1></html>
 arg=<macro>
 call("Align_Runner.callFromMacro");
 </macro>
@@ -36,7 +35,7 @@ call("Align_Runner.callFromMacro");
 <line>
 
 <button>
-label=About
+label=<html><h1 style="font-weight: normal">About</h1></html>
 arg=<macro>
 call("About_Page.callFromMacro");
 </macro>
@@ -44,13 +43,13 @@ call("About_Page.callFromMacro");
 <separator>
 
 <button>
-label=Debug
+label=<html><h1 style="font-weight: normal">Debug</h1></html>
 arg=<hide>
 
 <separator>
 
 <button>
-label=Exit
+label=<html><h1 style="font-weight: normal">Exit</h1></html>
 arg=<macro>
 run("Quit");
 </macro>

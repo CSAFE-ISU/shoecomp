@@ -5,6 +5,5 @@
 macro "AutoRun" {
     // hide ImageJ window at startup
     eval("js", "IJ.getInstance().setLocation(0, 0)");
-    eval("js", "IJ.getInstance().setVisible(false)");
-    runMacro("ShoeComp");
+    run("Action Bar","/macros/ShoeComp.ijm");
 }
