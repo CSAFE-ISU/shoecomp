@@ -9,12 +9,14 @@ import ij.process.ImageProcessor;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.filechooser.FileSystemView;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.util.prefs.Preferences;
 
 public class Image_Loader implements PlugIn {
     private final JButton imgLoadButton;
@@ -22,7 +24,7 @@ public class Image_Loader implements PlugIn {
     private final JButton markupLoadButton;
     private final JTextArea markupPath;
     private final JPanel panel;
-    private final JFileChooser chooser;
+    private JFileChooser chooser;
     ImagePlus img;
     private boolean img_valid;
     private boolean markup_valid;
@@ -67,6 +69,9 @@ public class Image_Loader implements PlugIn {
         markupLoadButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
+                String prev = prefs.get("PreviousJSON", System.getProperty("user.home").toString());
+                chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("json", "txt");
                 if (validPath == null || validPath.isEmpty()) {
                     JOptionPane.showMessageDialog(null, "Invalid File!");
@@ -74,6 +79,8 @@ public class Image_Loader implements PlugIn {
                 } else {
                     markupPath.setText(validPath);
                     markup_valid = true;
+                    String selected = new File(validPath).getParent();
+                    prefs.put("PreviousJSON", selected);
                 }
             }
         });
@@ -81,6 +88,9 @@ public class Image_Loader implements PlugIn {
         imgLoadButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
+                String prev = prefs.get("PreviousImage", System.getProperty("user.home").toString());
+                chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("tiff", "jpg", "png");
                 if (validPath == null || validPath.isEmpty()) {
                     JOptionPane.showMessageDialog(null, "Invalid File!");
@@ -88,6 +98,8 @@ public class Image_Loader implements PlugIn {
                 } else {
                     imgPath.setText(validPath);
                     img_valid = true;
+                    String selected = new File(validPath).getParent();
+                    prefs.put("PreviousImage", selected);
                 }
             }
         });
