@@ -9,10 +9,7 @@ import ij.process.ColorProcessor;
 import ij.process.FloatPolygon;
 import ij.process.ImageProcessor;
 import mpicbg.ij.TransformMapping;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.IllDefinedDataPointsException;
-import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.PointMatch;
+import mpicbg.models.*;
 import org.ahgamut.clqmtch.StackDFS;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -20,6 +17,7 @@ import org.json.JSONObject;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
@@ -355,8 +353,8 @@ public class Align_Runner implements PlugIn {
                 q_img.lock();
                 k_img.lock();
                 java.util.ArrayList<Integer> clq = new ArrayList<>();
-                AlignImagePairFromPoints<AffineModel2D> aip =
-                    new AlignImagePairFromPoints<>(AffineModel2D::new);
+                AlignImagePairFromPoints<SimilarityModel2D> aip =
+                    new AlignImagePairFromPoints<>(SimilarityModel2D::new);
                 ImagePlus rimg = null;
                 ImagePlus histPlot = null;
                 double score = 0.0;
