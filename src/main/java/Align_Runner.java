@@ -253,6 +253,7 @@ public class Align_Runner implements PlugIn {
     double min_ratio = Double.parseDouble(minRatioT.getText());
     double max_ratio = Double.parseDouble(maxRatioT.getText());
     int lower_bound = Integer.parseInt(lowerBoundT.getText());
+    int upper_bound = Math.min(q_pts.length, k_pts.length);
     boolean show_score = showScoreT.isSelected();
     String score_name = (String) scoreNamesT.getSelectedItem();
 
@@ -458,7 +459,7 @@ public class Align_Runner implements PlugIn {
                         max_ratio);
                 status[0] += 1;
                 org.ahgamut.clqmtch.StackDFS s = new StackDFS();
-                s.process_graph(g); /* warning is glitch */
+                s.process_graph(g, lower_bound, upper_bound); /* warning is glitch */
                 System.out.println(g.toString());
                 return g.get_max_clique();
               }
@@ -551,7 +552,7 @@ public class Align_Runner implements PlugIn {
                 Point[] kp0 = k_pts;
                 Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
                 ArrayList<Integer> kc_ind = aip.getCorrK_ind();
-                Stroke ks = new BasicStroke(12F);
+                Stroke ks = new BasicStroke(18F);
                 Color kcol = new Color(0, 0, 255, 157);
 
                 System.out.println("Saving to " + targ_zip);
