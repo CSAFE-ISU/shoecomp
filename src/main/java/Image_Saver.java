@@ -116,6 +116,9 @@ public class Image_Saver {
           @Override
           public void actionPerformed(ActionEvent e) {
             String validPath = checkFileSave("json", "txt");
+            if (!validPath.endsWith(".json")) {
+              validPath += ".json";
+            }
             if (validPath == null || validPath.isEmpty()) {
               JOptionPane.showMessageDialog(null, "Invalid File!");
               markup_valid = false;
