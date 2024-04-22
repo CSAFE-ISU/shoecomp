@@ -8,14 +8,6 @@ import ij.plugin.PlugIn;
 import ij.process.ColorProcessor;
 import ij.process.FloatPolygon;
 import ij.process.ImageProcessor;
-import mpicbg.ij.TransformMapping;
-import mpicbg.models.*;
-import org.ahgamut.clqmtch.StackDFS;
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
@@ -34,6 +26,13 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import mpicbg.ij.TransformMapping;
+import mpicbg.models.*;
+import org.ahgamut.clqmtch.StackDFS;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class Align_Runner implements PlugIn {
 
@@ -178,7 +177,7 @@ public class Align_Runner implements PlugIn {
   void loadReactions() {
     minRatioT.setText("0.8");
     maxRatioT.setText("1.2");
-    deltaT.setText("0.1");
+    deltaT.setText("5.0");
     epsilonT.setText("0.03");
     lowerBoundT.setText("10");
     showScoreT.setSelected(true);
@@ -246,7 +245,8 @@ public class Align_Runner implements PlugIn {
     PolygonRoi k_bounds = (PolygonRoi) k_img.getProperty("bounds");
     Point[] q_pts = ((PointRoi) q_img.getProperty("points")).getContainedPoints();
     Point[] k_pts = ((PointRoi) k_img.getProperty("points")).getContainedPoints();
-    double delta = Double.parseDouble(deltaT.getText());
+    /* convert degrees to radians */
+    double delta = Double.parseDouble(deltaT.getText())* (Math.PI) / 180.0;
     double epsilon = Double.parseDouble(epsilonT.getText());
     double min_ratio = Double.parseDouble(minRatioT.getText());
     double max_ratio = Double.parseDouble(maxRatioT.getText());
