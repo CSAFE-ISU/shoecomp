@@ -487,7 +487,7 @@ public class Align_Runner implements PlugIn {
                 Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
                 PolygonRoi mapped_k_bounds = aip.mapPolygonRoi(k_bounds, false);
                 ArrayList<Integer> kc_ind = aip.getCorrK_ind();
-                Stroke ks = new BasicStroke(12F);
+                Stroke ks = new BasicStroke(18F);
                 Color kcol = new Color(0, 0, 255, 157);
 
                 /* render necessary things on overlay */
