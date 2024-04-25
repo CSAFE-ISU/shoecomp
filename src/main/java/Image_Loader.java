@@ -63,11 +63,11 @@ public class Image_Loader implements PlugIn {
     }
 
     private void loadReactions() {
+        Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
         markupLoadButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
-                String prev = prefs.get("PreviousJSON", System.getProperty("user.home").toString());
+                String prev = prefs.get("PreviousJSONLoad", System.getProperty("user.home").toString());
                 chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("json", "txt");
                 if (validPath == null || validPath.isEmpty()) {
@@ -77,7 +77,7 @@ public class Image_Loader implements PlugIn {
                     markupPath.setText(validPath);
                     markup_valid = true;
                     String selected = new File(validPath).getParent();
-                    prefs.put("PreviousJSON", selected);
+                    prefs.put("PreviousJSONLoad", selected);
                 }
             }
         });
@@ -87,8 +87,7 @@ public class Image_Loader implements PlugIn {
         imgLoadButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
-                String prev = prefs.get("PreviousImage", System.getProperty("user.home").toString());
+                String prev = prefs.get("PreviousImageLoad", System.getProperty("user.home").toString());
                 chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("tiff", "jpg", "png");
                 if (validPath == null || validPath.isEmpty()) {
@@ -98,7 +97,7 @@ public class Image_Loader implements PlugIn {
                     imgPath.setText(validPath);
                     img_valid = true;
                     String selected = new File(validPath).getParent();
-                    prefs.put("PreviousImage", selected);
+                    prefs.put("PreviousImageLoad", selected);
                 }
             }
         });

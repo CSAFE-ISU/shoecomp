@@ -9,6 +9,7 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.prefs.Preferences;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
@@ -22,8 +23,7 @@ public class Image_Saver {
   private final HashMap<String, ImagePlus> imgmap;
   private final JComboBox<String> imgs;
   private final JTextArea dummy;
-  private final JFileChooser chooser;
-
+  private JFileChooser chooser;
   private boolean img_valid;
   private boolean markup_valid;
 
@@ -87,6 +87,7 @@ public class Image_Saver {
   }
 
   private void loadReactions() {
+    Preferences prefs = Preferences.userNodeForPackage(Image_Saver.class);
     imgs.addActionListener(
         new ActionListener() {
           @Override
@@ -100,6 +101,8 @@ public class Image_Saver {
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
+            String prev = prefs.get("PreviousImageSave", System.getProperty("user.home").toString());
+            chooser = new JFileChooser(prev);
             String validPath = checkFileSave("tiff", "jpg", "png");
             if (validPath == null || validPath.isEmpty()) {
               JOptionPane.showMessageDialog(null, "Invalid File!");
@@ -107,6 +110,8 @@ public class Image_Saver {
             } else {
               imgPath.setText(validPath);
               img_valid = true;
+              String selected = new File(validPath).getParent();
+              prefs.put("PreviousImageSave", selected);
             }
           }
         });
@@ -115,6 +120,9 @@ public class Image_Saver {
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
+
+            String prev = prefs.get("PreviousLoadSave", System.getProperty("user.home").toString());
+            chooser = new JFileChooser(prev);
             String validPath = checkFileSave("json", "txt");
             if (!validPath.endsWith(".json")) {
               validPath += ".json";
@@ -125,6 +133,9 @@ public class Image_Saver {
             } else {
               markupPath.setText(validPath);
               markup_valid = true;
+              String selected = new File(validPath).getParent();
+              if (selected != null)
+                prefs.put("PreviousLoadSave", selected);
             }
           }
         });
