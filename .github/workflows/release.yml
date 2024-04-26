@@ -23,14 +23,12 @@ jobs:
           java-version: '11'
       - name: build JAR
         run: bash ./.github/scripts/build-jar.sh
+      - name: rename JAR
+        run: cp target/shoecomp-1.0-SNAPSHOT-shaded.jar shoecomp-1.0.jar
       - name: upload release assets
         id: upload_assets
-        uses: svenstaro/upload-release-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
+        uses: softprops/action-gh-release@v2
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/shoecomp-1.0-SNAPSHOT-shaded.jar
-          overwrite: true
-          asset_name: shoecomp-1.0.jar
+          fail_on_unmatched_files: true
+          prerelease: true
+          files: shoecomp-1.0.jar
