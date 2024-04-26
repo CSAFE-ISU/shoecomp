@@ -1,3 +1,4 @@
+import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.WindowManager;
@@ -169,7 +170,7 @@ public class Align_Runner implements PlugIn {
 
     panel.add(showScoreT);
     panel.add(scoreNamesT);
-    scoreNamesT.addItem("clique_fraction");
+    scoreNamesT.addItem("clique_fraction"); /////////
     panel.add(new JLabel(""));
     panel.add(new JLabel(""));
 
@@ -281,8 +282,8 @@ public class Align_Runner implements PlugIn {
     JLabel currentWork = new JLabel();
     JButton saveOK = new JButton("Save Info");
     saveOK.setEnabled(false);
-    JButton cancelRun = new JButton("Don't Save");
-    cancelRun.setEnabled(false);
+    JButton cancelRun = new JButton("Cancel");
+    cancelRun.setEnabled(true);
 
     gbc.gridx = 0;
     gbc.ipady = 40;
@@ -374,7 +375,10 @@ public class Align_Runner implements PlugIn {
                         System.out.println("max clique");
                         clq = this.get_clique();
                         synchronized (status) {
-                          if (status[0] != -1) status[0] = 2;
+                          //IJ.log("Original was " + status[0]);
+                          if (status[0] == 0) status[0] = 4;
+                          else if (status[0] != -1) status[0] = 2;
+                          //IJ.log("Transformed into " + status[0]);
                           status.notify();
                         }
                         break;
@@ -401,6 +405,7 @@ public class Align_Runner implements PlugIn {
                           if (status[0] != -1) status[0] = 4;
                           status.notify();
                         }
+                        cancelRun.setText("Don't Save");
                         break;
                       case 4:
                         synchronized (status) {
@@ -536,7 +541,7 @@ public class Align_Runner implements PlugIn {
                 res.addSlice(q1);
                 res.addSlice(k1);
                 res.addSlice(q2);
-                return new ImagePlus("Overlay", res);
+                return new ImagePlus("Overlay", res); ////////
               }
 
               boolean saveOverlay(
