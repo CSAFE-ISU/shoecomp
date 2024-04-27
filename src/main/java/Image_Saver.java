@@ -104,12 +104,20 @@ public class Image_Saver {
             String prev = prefs.get("PreviousImageSave", System.getProperty("user.home").toString());
             chooser = new JFileChooser(prev);
             String validPath = checkFileSave("tiff", "jpg", "png");
+            if (!validPath.endsWith(".tiff") || !validPath.endsWith(".tif")
+             || !validPath.endsWith(".jpg") || !validPath.endsWith(".png")) {
+              validPath += ".tiff";
+            }
             if (validPath == null || validPath.isEmpty()) {
               JOptionPane.showMessageDialog(null, "Invalid File!");
               img_valid = false;
             } else {
               imgPath.setText(validPath);
               img_valid = true;
+              File file = new File(validPath);
+              if (file.exists()) {
+                JOptionPane.showMessageDialog(null, "File Already Exists!");
+              }
               String selected = new File(validPath).getParent();
               prefs.put("PreviousImageSave", selected);
             }
@@ -121,21 +129,25 @@ public class Image_Saver {
           @Override
           public void actionPerformed(ActionEvent e) {
 
-            String prev = prefs.get("PreviousLoadSave", System.getProperty("user.home").toString());
+            String prev = prefs.get("PreviousJSONSave", System.getProperty("user.home").toString());
             chooser = new JFileChooser(prev);
             String validPath = checkFileSave("json", "txt");
-            if (!validPath.endsWith(".json")) {
+            if (!validPath.endsWith(".json") || !validPath.endsWith(".txt")) {
               validPath += ".json";
             }
             if (validPath == null || validPath.isEmpty()) {
               JOptionPane.showMessageDialog(null, "Invalid File!");
               markup_valid = false;
             } else {
+              File file = new File(validPath);
+              if (file.exists()) {
+                JOptionPane.showMessageDialog(null, "File Already Exists!");
+              }
               markupPath.setText(validPath);
               markup_valid = true;
               String selected = new File(validPath).getParent();
               if (selected != null)
-                prefs.put("PreviousLoadSave", selected);
+                prefs.put("PreviousJSONSave", selected);
             }
           }
         });
