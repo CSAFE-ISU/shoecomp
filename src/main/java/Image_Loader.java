@@ -13,35 +13,14 @@ import java.io.File;
 import java.util.prefs.Preferences;
 
 public class Image_Loader implements PlugIn {
-    private final JButton imgLoadButton;
-    private final JTextArea imgPath;
-    private final JButton markupLoadButton;
-    private final JTextArea markupPath;
-    private final JPanel panel;
+    private Image_LoaderGUI gui;
     private JFileChooser chooser;
-    ImagePlus img;
     private boolean img_valid;
     private boolean markup_valid;
     boolean markup_begin;
 
     public Image_Loader() {
-        this.panel = new JPanel(new GridLayout(3, 2));
-        this.chooser = new JFileChooser();
-
-        this.imgLoadButton = new JButton();
-        imgLoadButton.setText("Load Image...");
-        this.imgPath = new JTextArea();
-        imgPath.setEditable(false);
-        imgPath.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-
-        this.markupLoadButton = new JButton();
-        markupLoadButton.setText("Markup File Location...");
-        this.markupPath = new JTextArea();
-        markupPath.setEditable(false);
-        markupPath.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-
-        this.img = null;
-        this.loadUI();
+        this.gui = new Image_LoaderGUI();
         this.loadReactions();
 
         markup_begin = false;
@@ -52,19 +31,9 @@ public class Image_Loader implements PlugIn {
         x.run("");
     }
 
-    private void loadUI() {
-        panel.add(new JLabel());
-        panel.add(new JLabel());
-        panel.add(imgLoadButton);
-        panel.add(imgPath);
-        panel.add(markupLoadButton);
-        panel.add(markupPath);
-        markupPath.setEnabled(false);
-    }
-
     private void loadReactions() {
         Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
-        markupLoadButton.addActionListener(new ActionListener() {
+        gui.getMarkupLoadButton().addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String prev = prefs.get("PreviousJSONLoad", System.getProperty("user.home").toString());
@@ -74,7 +43,7 @@ public class Image_Loader implements PlugIn {
                     JOptionPane.showMessageDialog(null, "Invalid File!");
                     markup_valid = false;
                 } else {
-                    markupPath.setText(validPath);
+                    gui.getMarkupPath().setText(validPath);
                     markup_valid = true;
                     String selected = new File(validPath).getParent();
                     prefs.put("PreviousJSONLoad", selected);
@@ -82,9 +51,7 @@ public class Image_Loader implements PlugIn {
             }
         });
 
-
-
-        imgLoadButton.addActionListener(new ActionListener() {
+        gui.getImgLoadButton().addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String prev = prefs.get("PreviousImageLoad", System.getProperty("user.home").toString());
@@ -94,7 +61,7 @@ public class Image_Loader implements PlugIn {
                     JOptionPane.showMessageDialog(null, "Invalid File!");
                     img_valid = false;
                 } else {
-                    imgPath.setText(validPath);
+                    gui.getImgPath().setText(validPath);
                     img_valid = true;
                     String selected = new File(validPath).getParent();
                     prefs.put("PreviousImageLoad", selected);
@@ -116,12 +83,12 @@ public class Image_Loader implements PlugIn {
     }
 
     public void run(String arg) {
-        int p = JOptionPane.showConfirmDialog(null, this.panel,
+        int p = JOptionPane.showConfirmDialog(null, gui.getPanel(),
                 "Load Image and Markup", JOptionPane.OK_CANCEL_OPTION);
         if (p == JOptionPane.CANCEL_OPTION) return;
         if (!img_valid) return;
 
-        ImagePlus tmp = IJ.openImage(imgPath.getText());
+        ImagePlus tmp = IJ.openImage(gui.getImgPath().getText());
         ImageProcessor raw = tmp.getProcessor();
 
         ImageStack overlay = new ImageStack();
@@ -131,9 +98,9 @@ public class Image_Loader implements PlugIn {
         overlay.addSlice(marked);
         overlay.addSlice(mask);
         overlay.addSlice(raw);
-        this.img = new ImagePlus(tmp.getShortTitle(), overlay);
-        this.img.show();
-        this.img.setTitle("0 Points Marked");
+        gui.setImg(new ImagePlus(tmp.getShortTitle(), overlay));
+        gui.getImg().show();
+        gui.getImg().setTitle("0 Points Marked");
 
         boolean mark_bounds;
         PolygonRoi pol = null;
@@ -141,12 +108,12 @@ public class Image_Loader implements PlugIn {
 
         if (markup_valid) {
             try {
-                MarkupData m = MarkupData.fromFile(markupPath.getText());
+                MarkupData m = MarkupData.fromFile(gui.getMarkupPath().getText());
                 if (m.nbounds != 0) {
                     pol = m.getBoundsAsRoi();
                     mark_bounds = true;
                 } else {
-                    this.showBoundsHelper(img);
+                    this.showBoundsHelper(gui.getImg());
                     mark_bounds = false;
                 }
                 if (m.npoints != 0) {
@@ -158,7 +125,7 @@ public class Image_Loader implements PlugIn {
                 // might need to show an error here
                 System.out.println("unable to read JSON!");
                 e.printStackTrace();
-                this.img.close();
+                gui.getImg().close();
                 return;
             }
         } else {
@@ -169,7 +136,7 @@ public class Image_Loader implements PlugIn {
         }
 
         if (!mark_bounds) {
-            pol = this.showBoundsHelper(img);
+            pol = this.showBoundsHelper(gui.getImg());
         }
         if (pol == null || pts == null) {
             return;
@@ -182,27 +149,27 @@ public class Image_Loader implements PlugIn {
         mask.fill(pol);
 
         tmp.close();
-        img.updateAndDraw();
+        gui.getImg().updateAndDraw();
 
         pts.setSize(3);
         pts.setFillColor(Color.RED);
         pts.setStrokeColor(Color.RED);
-        img.setProperty("points", pts);
-        img.setProperty("bounds", pol);
+        gui.getImg().setProperty("points", pts);
+        gui.getImg().setProperty("bounds", pol);
         /* TODO: make behavior consistent
             when marking anew, the PointRoi does not show on all layers  */
         ij.IJ.setTool("Multi-Point");
-        img.setRoi(pts);
-        ImageCanvas canv = img.getWindow().getCanvas();
+        gui.getImg().setRoi(pts);
+        ImageCanvas canv = gui.getImg().getWindow().getCanvas();
         canv.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
                 super.mousePressed(e);
-                if (img.getRoi() == null) {
+                if (gui.getImg().getRoi() == null) {
                     reconfigurePointRoi();
                 }
-                int numPoints = (img.getRoi() != null) ? img.getRoi().getContainedPoints().length : 0;
-                img.setTitle(numPoints + " Points Marked");
+                int numPoints = (gui.getImg().getRoi() != null) ? gui.getImg().getRoi().getContainedPoints().length : 0;
+                gui.getImg().setTitle(numPoints + " Points Marked");
             }
         });
     }
@@ -212,9 +179,9 @@ public class Image_Loader implements PlugIn {
         pts.setSize(3);
         pts.setFillColor(Color.RED);
         pts.setStrokeColor(Color.RED);
-        img.setProperty("points", pts);
+        gui.getImg().setProperty("points", pts);
         ij.IJ.setTool("Multi-Point");
-        img.setRoi(pts);
+        gui.getImg().setRoi(pts);
 
     }
 
