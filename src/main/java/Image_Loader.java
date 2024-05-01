@@ -21,6 +21,7 @@ public class Image_Loader implements PlugIn {
 
     public Image_Loader() {
         this.gui = new Image_LoaderGUI();
+        this.chooser = new JFileChooser();
         this.loadReactions();
 
         markup_begin = false;
