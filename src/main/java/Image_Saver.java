@@ -1,13 +1,11 @@
 import ij.IJ;
 import ij.ImagePlus;
-import ij.WindowManager;
 import ij.gui.PointRoi;
 import ij.gui.PolygonRoi;
-import java.awt.*;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
-import java.util.HashMap;
 import java.util.Objects;
 import java.util.prefs.Preferences;
 import javax.swing.*;
@@ -15,41 +13,14 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class Image_Saver {
 
-  private final JButton imgSaveButton;
-  private final JTextArea imgPath;
-  private final JButton markupSaveButton;
-  private final JTextArea markupPath;
-  private final JPanel panel;
-  private final HashMap<String, ImagePlus> imgmap;
-  private final JComboBox<String> imgs;
-  private final JTextArea dummy;
+  private Image_SaverGUI gui;
   private JFileChooser chooser;
   private boolean img_valid;
   private boolean markup_valid;
 
   public Image_Saver() {
-    this.panel = new JPanel(new GridLayout(6, 2));
-    this.dummy = new JTextArea();
-    dummy.setText("Save Image + Markup");
-    dummy.setEditable(false);
-
-    this.imgmap = new HashMap<>();
-    this.imgs = new JComboBox<>();
-
-    this.imgSaveButton = new JButton("Save Image to:");
-    this.imgPath = new JTextArea();
-    imgPath.setEditable(false);
-    imgPath.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-
-    this.markupSaveButton = new JButton();
-    markupSaveButton.setText("Save Markup To:");
-    this.markupPath = new JTextArea();
-    markupPath.setEditable(false);
-    markupPath.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-
+    gui = new Image_SaverGUI();
     this.chooser = new JFileChooser();
-
-    loadUI();
     loadReactions();
   }
 
@@ -58,46 +29,18 @@ public class Image_Saver {
     x.run("");
   }
 
-  private void loadUI() {
-    panel.add(dummy);
-    panel.add(new JLabel());
-
-    int[] idList = WindowManager.getIDList();
-    if (idList == null || idList.length == 0) {
-      dummy.setText("no Images to save!");
-      return;
-    }
-    ImagePlus tmp;
-    for (int id : idList) {
-      tmp = WindowManager.getImage(id);
-      imgmap.put(tmp.getShortTitle(), tmp);
-      imgs.addItem(tmp.getShortTitle());
-    }
-
-    panel.add(new JLabel("Select Image:"));
-    panel.add(imgs);
-    panel.add(imgSaveButton);
-    panel.add(imgPath);
-    panel.add(new JLabel());
-    panel.add(new JLabel());
-    panel.add(markupSaveButton);
-    panel.add(markupPath);
-
-    markupPath.setEnabled(false);
-  }
-
   private void loadReactions() {
     Preferences prefs = Preferences.userNodeForPackage(Image_Saver.class);
-    imgs.addActionListener(
+    gui.getImgs().addActionListener(
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
-            String item = Objects.requireNonNull(imgs.getSelectedItem()).toString();
-            ImagePlus tmp = imgmap.get(item);
+            String item = Objects.requireNonNull(gui.getImgs().getSelectedItem()).toString();
+            ImagePlus tmp = gui.getImgMap().get(item);
           }
         });
 
-    imgSaveButton.addActionListener(
+    gui.getImgSaveButton().addActionListener(
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
@@ -112,7 +55,7 @@ public class Image_Saver {
               JOptionPane.showMessageDialog(null, "Invalid File!");
               img_valid = false;
             } else {
-              imgPath.setText(validPath);
+              gui.getImgPath().setText(validPath);
               img_valid = true;
               File file = new File(validPath);
               if (file.exists()) {
@@ -124,7 +67,7 @@ public class Image_Saver {
           }
         });
 
-    markupSaveButton.addActionListener(
+    gui.getMarkupSaveButton().addActionListener(
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
@@ -143,7 +86,7 @@ public class Image_Saver {
               if (file.exists()) {
                 JOptionPane.showMessageDialog(null, "File Already Exists!");
               }
-              markupPath.setText(validPath);
+              gui.getMarkupPath().setText(validPath);
               markup_valid = true;
               String selected = new File(validPath).getParent();
               if (selected != null)
@@ -171,20 +114,20 @@ public class Image_Saver {
   public void run(String arg) {
     int p =
         JOptionPane.showConfirmDialog(
-            null, this.panel, "Save Image and Markup", JOptionPane.OK_CANCEL_OPTION);
+            null, gui.getPanel(), "Save Image and Markup", JOptionPane.OK_CANCEL_OPTION);
     if (p == JOptionPane.CANCEL_OPTION) return;
     if (!img_valid && !markup_valid) return;
 
-    ImagePlus tmp = imgmap.get(Objects.requireNonNull(imgs.getSelectedItem()).toString());
+    ImagePlus tmp = gui.getImgMap().get(Objects.requireNonNull(gui.getImgs().getSelectedItem()).toString());
     if (img_valid) {
-      IJ.save(tmp, imgPath.getText());
+      IJ.save(tmp, gui.getImgPath().getText());
     }
     if (markup_valid) {
       PolygonRoi pol = (PolygonRoi) tmp.getProperty("bounds");
       PointRoi pts = (PointRoi) tmp.getProperty("points");
       if (pol != null && pts != null) {
         MarkupData m = MarkupData.fromROIPair(pol, pts);
-        m.toFile(markupPath.getText());
+        m.toFile(gui.getMarkupPath().getText());
       } else {
         System.out.println("Unable to save markup!!!");
       }
