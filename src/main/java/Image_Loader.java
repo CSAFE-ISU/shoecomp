@@ -1,20 +1,14 @@
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
-import ij.gui.PointRoi;
-import ij.gui.PolygonRoi;
-import ij.gui.Toolbar;
+import ij.gui.*;
 import ij.plugin.PlugIn;
 import ij.process.ImageProcessor;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.filechooser.FileSystemView;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.*;
 import java.io.File;
 import java.util.prefs.Preferences;
 
@@ -28,6 +22,7 @@ public class Image_Loader implements PlugIn {
     ImagePlus img;
     private boolean img_valid;
     private boolean markup_valid;
+    boolean markup_begin;
 
     public Image_Loader() {
         this.panel = new JPanel(new GridLayout(3, 2));
@@ -48,6 +43,8 @@ public class Image_Loader implements PlugIn {
         this.img = null;
         this.loadUI();
         this.loadReactions();
+
+        markup_begin = false;
     }
 
     public static void callFromMacro() {
@@ -66,11 +63,11 @@ public class Image_Loader implements PlugIn {
     }
 
     private void loadReactions() {
+        Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
         markupLoadButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
-                String prev = prefs.get("PreviousJSON", System.getProperty("user.home").toString());
+                String prev = prefs.get("PreviousJSONLoad", System.getProperty("user.home").toString());
                 chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("json", "txt");
                 if (validPath == null || validPath.isEmpty()) {
@@ -80,16 +77,17 @@ public class Image_Loader implements PlugIn {
                     markupPath.setText(validPath);
                     markup_valid = true;
                     String selected = new File(validPath).getParent();
-                    prefs.put("PreviousJSON", selected);
+                    prefs.put("PreviousJSONLoad", selected);
                 }
             }
         });
 
+
+
         imgLoadButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
-                String prev = prefs.get("PreviousImage", System.getProperty("user.home").toString());
+                String prev = prefs.get("PreviousImageLoad", System.getProperty("user.home").toString());
                 chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("tiff", "jpg", "png");
                 if (validPath == null || validPath.isEmpty()) {
@@ -99,7 +97,7 @@ public class Image_Loader implements PlugIn {
                     imgPath.setText(validPath);
                     img_valid = true;
                     String selected = new File(validPath).getParent();
-                    prefs.put("PreviousImage", selected);
+                    prefs.put("PreviousImageLoad", selected);
                 }
             }
         });
@@ -135,6 +133,7 @@ public class Image_Loader implements PlugIn {
         overlay.addSlice(raw);
         this.img = new ImagePlus(tmp.getShortTitle(), overlay);
         this.img.show();
+        this.img.setTitle("0 Points Marked");
 
         boolean mark_bounds;
         PolygonRoi pol = null;
@@ -194,6 +193,29 @@ public class Image_Loader implements PlugIn {
             when marking anew, the PointRoi does not show on all layers  */
         ij.IJ.setTool("Multi-Point");
         img.setRoi(pts);
+        ImageCanvas canv = img.getWindow().getCanvas();
+        canv.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                super.mousePressed(e);
+                if (img.getRoi() == null) {
+                    reconfigurePointRoi();
+                }
+                int numPoints = (img.getRoi() != null) ? img.getRoi().getContainedPoints().length : 0;
+                img.setTitle(numPoints + " Points Marked");
+            }
+        });
+    }
+
+    void reconfigurePointRoi() {
+        PointRoi pts = new PointRoi();
+        pts.setSize(3);
+        pts.setFillColor(Color.RED);
+        pts.setStrokeColor(Color.RED);
+        img.setProperty("points", pts);
+        ij.IJ.setTool("Multi-Point");
+        img.setRoi(pts);
+
     }
 
     PolygonRoi showBoundsHelper(ImagePlus t) {

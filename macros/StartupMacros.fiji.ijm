@@ -6,4 +6,5 @@ macro "AutoRun" {
     // hide ImageJ window at startup
     eval("js", "IJ.getInstance().setLocation(0, 0)");
     run("Action Bar","/macros/ShoeComp.ijm");
+	run("Install...", "install=C:/Users/Zeynep/Desktop/CSAFE/fiji-win64/Fiji.app/macros/ShoeComp_Shortcuts.ijm");
 }
