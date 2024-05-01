@@ -33,12 +33,8 @@ jobs:
         run: bash ./.github/scripts/pkg-${{ matrix.fiji_target }}.sh
       - name: upload release ZIP
         id: upload_zip
-        uses: svenstaro/upload-release-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
+        uses: softprops/action-gh-release@v2
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: fiji-${{ matrix.fiji_target }}.zip
-          overwrite: true
-          asset_name: shoecomp-fiji-${{ matrix.fiji_target }}.zip
+          fail_on_unmatched_files: true
+          prerelease: true
+          files: shoecomp-fiji-${{ matrix.fiji_target }}.zip

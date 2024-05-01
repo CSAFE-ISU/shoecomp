@@ -194,11 +194,12 @@ public class Image_Loader implements PlugIn {
                 JDialog d = new JDialog();
                 JPanel subpanel = new JPanel(new GridLayout(1, 1));
                 JTextArea b = new JTextArea();
-                b.setText("Close Window afer marking bounds");
+                b.setText("Close this window after marking\nthe boundary of the shoeprint");
+                b.setFont(b.getFont().deriveFont(28f));
                 b.setEditable(false);
                 subpanel.add(b);
                 d.setContentPane(subpanel);
-                d.setTitle("Mark Boundary");
+                d.setTitle("Mark boundary of shoeprint");
                 d.pack();
                 d.addWindowListener(new WindowAdapter() {
                     @Override

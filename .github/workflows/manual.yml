@@ -1,0 +1,32 @@
+name: build shoecomp manual
+on:
+  workflow_dispatch:
+  release:
+    types: [created]
+  create:
+    tags:
+      - v.*
+
+jobs:
+  build_manual:
+    name: compile shoecomp TeX manual
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        id: checkout_repo
+        uses: actions/checkout@v4
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: ./manual/
+          latexmk_shell_escape: true
+          root_file: main.tex
+      - name: rename manual
+        run: cp ./manual/main.pdf ./ShoeComp-User-Guide.pdf
+      - name: upload manual to github
+        id: upload_manual
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          prerelease: true
+          files: ShoeComp-User-Guide.pdf
