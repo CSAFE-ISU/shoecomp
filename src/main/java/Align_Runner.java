@@ -53,8 +53,8 @@ public class Align_Runner implements PlugIn {
   void loadReactions() {
     gui.getMinRatioT().setText("0.8");
     gui.getMaxRatioT().setText("1.2");
-    gui.getDeltaT().setText("5.0");
-    gui.getEpsilonT().setText("0.03");
+    //gui.getDeltaT().setText("5.0");
+    //gui.getEpsilonT().setText("0.03");
     gui.getLowerBoundT().setText("10");
     gui.getShowScoreT().setSelected(true);
     gui.getQImgs().setSelectedIndex(0);
@@ -122,8 +122,11 @@ public class Align_Runner implements PlugIn {
     Point[] q_pts = ((PointRoi) q_img.getProperty("points")).getContainedPoints();
     Point[] k_pts = ((PointRoi) k_img.getProperty("points")).getContainedPoints();
     /* convert degrees to radians */
-    double delta = Double.parseDouble(gui.getDeltaT().getText())* (Math.PI) / 180.0;
-    double epsilon = Double.parseDouble(gui.getEpsilonT().getText());
+    //double delta = Double.parseDouble(gui.getDeltaT().getText())* (Math.PI) / 180.0;
+    double delta = (gui.getDeltaT().getValue() / 10.0) * (Math.PI) / 180.0;
+
+    //double epsilon = Double.parseDouble(gui.getEpsilonT().getText());
+    double epsilon = gui.getEpsilonT().getValue() / 10;
     double min_ratio = Double.parseDouble(gui.getMinRatioT().getText());
     double max_ratio = Double.parseDouble(gui.getMaxRatioT().getText());
     int lower_bound = Integer.parseInt(gui.getLowerBoundT().getText());

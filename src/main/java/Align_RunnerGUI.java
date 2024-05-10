@@ -1,4 +1,3 @@
-import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.PointRoi;
@@ -7,15 +6,19 @@ import ij.gui.PolygonRoi;
 import javax.swing.*;
 import java.awt.*;
 import java.text.NumberFormat;
+import java.util.Dictionary;
 import java.util.HashMap;
+import java.util.Hashtable;
 
 public class Align_RunnerGUI {
     private final JComboBox<String> Q_imgs;
     private final JComboBox<String> K_imgs;
     private final JFormattedTextField minRatioT;
     private final JFormattedTextField maxRatioT;
-    private final JFormattedTextField deltaT;
-    private final JFormattedTextField epsilonT;
+    private final JSlider deltaT;
+    private final JSlider epsilonT;
+    private final JLabel deltaTVal;
+    private final JLabel epsilonTVal;
     private final JFormattedTextField lowerBoundT;
     private final JLabel Qimg_points;
     private final JLabel Kimg_points;
@@ -36,8 +39,10 @@ public class Align_RunnerGUI {
         this.Kimg_points = new JLabel();
         this.minRatioT = new JFormattedTextField(NumberFormat.getInstance());
         this.maxRatioT = new JFormattedTextField(NumberFormat.getInstance());
-        this.deltaT = new JFormattedTextField(NumberFormat.getInstance());
-        this.epsilonT = new JFormattedTextField(NumberFormat.getInstance());
+        this.deltaT = new JSlider(1, 50);
+        this.epsilonT = new JSlider(1, 50);
+        this.deltaTVal = new JLabel((deltaT.getMaximum() / 20.0) + " degrees");
+        this.epsilonTVal = new JLabel((epsilonT.getMaximum() / 20.0) + " units");
         this.lowerBoundT = new JFormattedTextField(NumberFormat.getInstance());
         this.showScoreT = new JCheckBox("Similarity Score?");
         this.scoreNamesT = new JComboBox<>();
@@ -108,14 +113,36 @@ public class Align_RunnerGUI {
         panel.add(new JLabel("and"));
         panel.add(maxRatioT);
 
+        Dictionary dict = new Hashtable();
+        dict.put(1, new JLabel("0.1"));
+        dict.put(50, new JLabel("5.0"));
+        this.deltaT.setLabelTable(dict);
+        this.epsilonT.setLabelTable(dict);
+        this.deltaT.setPaintLabels(true);
+        this.epsilonT.setPaintLabels(true);
+
+        deltaT.addChangeListener(e -> {
+            if (deltaT.getValueIsAdjusting()) {
+                deltaTVal.setText((deltaT.getValue() / 10.0) + " degrees");
+            }
+        });
+
+        epsilonT.addChangeListener(e -> {
+            if (epsilonT.getValueIsAdjusting()) {
+                epsilonTVal.setText((epsilonT.getValue() / 10.0) + " units");
+            }
+        });
+
         panel.add(new JLabel("Maximum Angular Distortion"));
+        //panel.add(deltaT);
         panel.add(deltaT);
-        panel.add(new JLabel("degrees"));
+        panel.add(deltaTVal);
         panel.add(new JLabel(""));
 
         panel.add(new JLabel("Maximum Scaling Distortion"));
+        //panel.add(epsilonT);
         panel.add(epsilonT);
-        panel.add(new JLabel("units"));
+        panel.add(epsilonTVal);
         panel.add(new JLabel(""));
 
         panel.add(new JLabel("Must Have At Least"));
@@ -165,11 +192,9 @@ public class Align_RunnerGUI {
         return maxRatioT;
     }
 
-    public JFormattedTextField getDeltaT() {
-        return deltaT;
-    }
+    public JSlider getDeltaT() { return deltaT; }
 
-    public JFormattedTextField getEpsilonT() {
+    public JSlider getEpsilonT() {
         return epsilonT;
     }
 
