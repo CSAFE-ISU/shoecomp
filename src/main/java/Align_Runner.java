@@ -1,7 +1,5 @@
-import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
-import ij.WindowManager;
 import ij.gui.*;
 import ij.io.FileInfo;
 import ij.io.TiffEncoder;
@@ -19,10 +17,8 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
@@ -37,45 +33,11 @@ import org.json.JSONObject;
 
 public class Align_Runner implements PlugIn {
 
-  private final JPanel panel;
-  private final JTextArea dummy;
-
-  private final HashMap<String, ImagePlus> imgmap;
-  private final JComboBox<String> Q_imgs;
-  private final JComboBox<String> K_imgs;
-  private final JFormattedTextField minRatioT;
-  private final JFormattedTextField maxRatioT;
-  private final JFormattedTextField deltaT;
-  private final JFormattedTextField epsilonT;
-  private final JFormattedTextField lowerBoundT;
-  private final JLabel Qimg_points;
-  private final JLabel Kimg_points;
-  private final JCheckBox showScoreT;
-  private final JComboBox<String> scoreNamesT;
-  private HashMap<String, String> scoreFiles;
-  private String targ_zip;
-  private boolean uiLoaded;
+  private Align_RunnerGUI gui;
 
   public Align_Runner() {
-    this.panel = new JPanel(new GridLayout(7, 4));
-    this.dummy = new JTextArea();
-    this.imgmap = new HashMap<>();
-    this.Q_imgs = new JComboBox<>();
-    Q_imgs.setEditable(false);
-    this.Qimg_points = new JLabel();
-    this.K_imgs = new JComboBox<>();
-    K_imgs.setEditable(false);
-    this.Kimg_points = new JLabel();
-    this.minRatioT = new JFormattedTextField(NumberFormat.getInstance());
-    this.maxRatioT = new JFormattedTextField(NumberFormat.getInstance());
-    this.deltaT = new JFormattedTextField(NumberFormat.getInstance());
-    this.epsilonT = new JFormattedTextField(NumberFormat.getInstance());
-    this.lowerBoundT = new JFormattedTextField(NumberFormat.getInstance());
-    this.showScoreT = new JCheckBox("Similarity Score?");
-    this.scoreNamesT = new JComboBox<>();
-    this.uiLoaded = false;
-    this.targ_zip = "";
-    loadUI();
+    gui = new Align_RunnerGUI();
+    loadReactions();
   }
 
   public static void callFromMacro() {
@@ -83,146 +45,59 @@ public class Align_Runner implements PlugIn {
     x.run("");
   }
 
-  void cannotStart() {
-    dummy.setText("You need to have 2 valid images open!");
-    uiLoaded = false;
-  }
-
   void missingMarkup(ImagePlus img) {
-    dummy.setText("The Image: " + img.getShortTitle() + " is not loaded properly!");
-    uiLoaded = false;
-  }
-
-  boolean UICheck() {
-    int[] idList = WindowManager.getIDList();
-    int valid_images = 0;
-    if (idList == null || idList.length < 2) {
-      cannotStart();
-      return false;
-    }
-    for (int id : idList) {
-      ImagePlus img = WindowManager.getImage(id);
-      if (img == null) {
-        continue;
-      }
-      PolygonRoi pol = (PolygonRoi) img.getProperty("bounds");
-      PointRoi pts = (PointRoi) img.getProperty("points");
-      if (pol == null || pts == null) {
-        continue;
-      }
-      valid_images += 1;
-    }
-    if (valid_images < 2) {
-      cannotStart();
-      return false;
-    }
-    return true;
-  }
-
-  void loadUI() {
-    if (!UICheck()) {
-      panel.add(dummy);
-      return;
-    }
-
-    int[] idList = WindowManager.getIDList();
-    ImagePlus tmp;
-    for (int id : idList) {
-      tmp = WindowManager.getImage(id);
-      if (tmp.getProperty("points") == null) continue;
-      if (tmp.getProperty("bounds") == null) continue;
-      imgmap.put(tmp.getShortTitle(), tmp);
-      Q_imgs.addItem(tmp.getShortTitle());
-      K_imgs.addItem(tmp.getShortTitle());
-    }
-    panel.add(new JLabel("Questioned Image:"));
-    panel.add(Q_imgs);
-    panel.add(new JLabel("Reference Image:"));
-    panel.add(K_imgs);
-
-    panel.add(new JLabel(""));
-    panel.add(Qimg_points);
-    panel.add(new JLabel(""));
-    panel.add(Kimg_points);
-
-    panel.add(new JLabel("Scale difference is around:"));
-    panel.add(minRatioT);
-    panel.add(new JLabel("and"));
-    panel.add(maxRatioT);
-
-    panel.add(new JLabel("Maximum Angular Distortion"));
-    panel.add(deltaT);
-    panel.add(new JLabel("degrees"));
-    panel.add(new JLabel(""));
-
-    panel.add(new JLabel("Maximum Scaling Distortion"));
-    panel.add(epsilonT);
-    panel.add(new JLabel("units"));
-    panel.add(new JLabel(""));
-
-    panel.add(new JLabel("Must Have At Least"));
-    panel.add(lowerBoundT);
-    panel.add(new JLabel("points in common"));
-    panel.add(new JLabel(""));
-
-    panel.add(showScoreT);
-    panel.add(scoreNamesT);
-    scoreNamesT.addItem("clique_fraction"); /////////
-    panel.add(new JLabel(""));
-    panel.add(new JLabel(""));
-
-    loadReactions();
-    uiLoaded = true;
+    gui.getDummy().setText("The Image: " + img.getShortTitle() + " is not loaded properly!");
+    gui.setUiLoaded(false);
   }
 
   void loadReactions() {
-    minRatioT.setText("0.8");
-    maxRatioT.setText("1.2");
-    deltaT.setText("5.0");
-    epsilonT.setText("0.03");
-    lowerBoundT.setText("10");
-    showScoreT.setSelected(true);
-    Q_imgs.setSelectedIndex(0);
-    K_imgs.setSelectedIndex(1);
+    gui.getMinRatioT().setText("0.8");
+    gui.getMaxRatioT().setText("1.2");
+    gui.getDeltaT().setText("5.0");
+    gui.getEpsilonT().setText("0.03");
+    gui.getLowerBoundT().setText("10");
+    gui.getShowScoreT().setSelected(true);
+    gui.getQImgs().setSelectedIndex(0);
+    gui.getKImgs().setSelectedIndex(1);
 
-    Q_imgs.addActionListener(
+    gui.getQImgs().addActionListener(
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
             ImagePlus z;
             PointRoi r;
-            z = imgmap.get(Q_imgs.getSelectedItem());
+            z = gui.getImgMap().get(gui.getQImgs().getSelectedItem());
             r = (PointRoi) z.getProperty("points");
-            Qimg_points.setText(r.size() + " points");
+            gui.getQimgPoints().setText(r.size() + " points");
           }
         });
 
-    Q_imgs.addActionListener(
+    gui.getQImgs().addActionListener(
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
-            getNumPoints(imgmap.get(Q_imgs.getSelectedItem()), Qimg_points);
+            getNumPoints(gui.getImgMap().get((ImagePlus)gui.getQImgs().getSelectedItem()), gui.getQimgPoints());
           }
         });
 
-    K_imgs.addActionListener(
+    gui.getKImgs().addActionListener(
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
-            getNumPoints(imgmap.get(K_imgs.getSelectedItem()), Kimg_points);
+            getNumPoints(gui.getImgMap().get((ImagePlus)gui.getKImgs().getSelectedItem()), gui.getKimgPoints());
           }
         });
 
-    showScoreT.addActionListener(
+    gui.getShowScoreT().addActionListener(
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
-            scoreNamesT.setEnabled(showScoreT.isSelected());
+            gui.getScoreNamesT().setEnabled(gui.getShowScoreT().isSelected());
           }
         });
 
-    this.getNumPoints(imgmap.get(K_imgs.getSelectedItem()), Kimg_points);
-    this.getNumPoints(imgmap.get(Q_imgs.getSelectedItem()), Qimg_points);
+    this.getNumPoints(gui.getImgMap().get(gui.getKImgs().getSelectedItem()), gui.getKimgPoints());
+    this.getNumPoints(gui.getImgMap().get(gui.getQImgs().getSelectedItem()), gui.getQimgPoints());
   }
 
   void getNumPoints(ImagePlus img, JLabel targ) {
@@ -234,27 +109,27 @@ public class Align_Runner implements PlugIn {
   public void run(String arg) {
     int p =
         JOptionPane.showConfirmDialog(
-            null, this.panel, "Align Images with Markup", JOptionPane.OK_CANCEL_OPTION);
-    if (!uiLoaded || p == JOptionPane.CANCEL_OPTION) return;
+            null, gui.getPanel(), "Align Images with Markup", JOptionPane.OK_CANCEL_OPTION);
+    if (!gui.isUiLoaded() || p == JOptionPane.CANCEL_OPTION) return;
     runWithProgress();
   }
 
   void runWithProgress() {
-    ImagePlus q_img = imgmap.get(Q_imgs.getSelectedItem());
-    ImagePlus k_img = imgmap.get(K_imgs.getSelectedItem());
+    ImagePlus q_img = gui.getImgMap().get(gui.getQImgs().getSelectedItem());
+    ImagePlus k_img = gui.getImgMap().get(gui.getKImgs().getSelectedItem());
     PolygonRoi q_bounds = (PolygonRoi) q_img.getProperty("bounds");
     PolygonRoi k_bounds = (PolygonRoi) k_img.getProperty("bounds");
     Point[] q_pts = ((PointRoi) q_img.getProperty("points")).getContainedPoints();
     Point[] k_pts = ((PointRoi) k_img.getProperty("points")).getContainedPoints();
     /* convert degrees to radians */
-    double delta = Double.parseDouble(deltaT.getText())* (Math.PI) / 180.0;
-    double epsilon = Double.parseDouble(epsilonT.getText());
-    double min_ratio = Double.parseDouble(minRatioT.getText());
-    double max_ratio = Double.parseDouble(maxRatioT.getText());
-    int lower_bound = Integer.parseInt(lowerBoundT.getText());
+    double delta = Double.parseDouble(gui.getDeltaT().getText())* (Math.PI) / 180.0;
+    double epsilon = Double.parseDouble(gui.getEpsilonT().getText());
+    double min_ratio = Double.parseDouble(gui.getMinRatioT().getText());
+    double max_ratio = Double.parseDouble(gui.getMaxRatioT().getText());
+    int lower_bound = Integer.parseInt(gui.getLowerBoundT().getText());
     int upper_bound = Math.min(q_pts.length, k_pts.length);
-    boolean show_score = showScoreT.isSelected();
-    String score_name = (String) scoreNamesT.getSelectedItem();
+    boolean show_score = gui.getShowScoreT().isSelected();
+    String score_name = (String) gui.getScoreNamesT().getSelectedItem();
 
     String[] works = {
       "Starting...",
@@ -321,10 +196,10 @@ public class Align_Runner implements PlugIn {
             int returnValue = chooser.showSaveDialog(null);
             if (returnValue == JFileChooser.APPROVE_OPTION) {
               File file = chooser.getSelectedFile();
-              targ_zip = file.getAbsolutePath();
-              if (!targ_zip.isEmpty()) {
-                if (!targ_zip.endsWith(".zip")) {
-                  targ_zip += ".zip";
+              gui.setTargZip(file.getAbsolutePath());
+              if (!gui.getTargZip().isEmpty()) {
+                if (!gui.getTargZip().endsWith(".zip")) {
+                  gui.setTargZip(gui.getTargZip() + ".zip");
                 }
                 synchronized (status) {
                   status[0] = 5;
@@ -558,7 +433,7 @@ public class Align_Runner implements PlugIn {
                 Stroke ks = new BasicStroke(18F);
                 Color kcol = new Color(0, 0, 255, 157);
 
-                System.out.println("Saving to " + targ_zip);
+                System.out.println("Saving to " + gui.getTargZip());
                 DataOutputStream out;
                 FileInfo info;
                 ImagePlus img;
@@ -637,7 +512,7 @@ public class Align_Runner implements PlugIn {
 
                 try {
                   ZipOutputStream zos =
-                      new ZipOutputStream(Files.newOutputStream(Paths.get(targ_zip)));
+                      new ZipOutputStream(Files.newOutputStream(Paths.get(gui.getTargZip())));
                   out = new DataOutputStream(new BufferedOutputStream(zos, 4096));
                   int n = res_stack.size();
                   for (int j = 1; j <= n; ++j) {
