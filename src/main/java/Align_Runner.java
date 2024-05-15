@@ -33,7 +33,7 @@ import org.json.JSONObject;
 
 public class Align_Runner implements PlugIn {
 
-  private Align_RunnerGUI gui;
+  private final Align_RunnerGUI gui;
 
   public Align_Runner() {
     gui = new Align_RunnerGUI();
@@ -46,7 +46,7 @@ public class Align_Runner implements PlugIn {
   }
 
   void missingMarkup(ImagePlus img) {
-    gui.getDummy().setText("The Image: " + img.getShortTitle() + " is not loaded properly!");
+    gui.getDummy().setText("The Image: " + img.getProperty("name") + " is not loaded properly!");
     gui.setUiLoaded(false);
   }
 
@@ -76,7 +76,7 @@ public class Align_Runner implements PlugIn {
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
-            getNumPoints(gui.getImgMap().get((ImagePlus)gui.getQImgs().getSelectedItem()), gui.getQimgPoints());
+            getNumPoints(gui.getImgMap().get(gui.getQImgs().getSelectedItem()), gui.getQimgPoints());
           }
         });
 
@@ -84,7 +84,7 @@ public class Align_Runner implements PlugIn {
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
-            getNumPoints(gui.getImgMap().get((ImagePlus)gui.getKImgs().getSelectedItem()), gui.getKimgPoints());
+            getNumPoints(gui.getImgMap().get(gui.getKImgs().getSelectedItem()), gui.getKimgPoints());
           }
         });
 

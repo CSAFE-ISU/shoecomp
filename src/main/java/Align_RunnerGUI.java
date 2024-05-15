@@ -24,6 +24,9 @@ public class Align_RunnerGUI {
     private final JLabel Kimg_points;
     private final JCheckBox showScoreT;
     private final JComboBox<String> scoreNamesT;
+    private final JPanel panel;
+    private final JTextArea dummy;
+    private final HashMap<String, ImagePlus> imgmap;
     private String targ_zip;
     private boolean uiLoaded;
 
@@ -94,9 +97,10 @@ public class Align_RunnerGUI {
             tmp = WindowManager.getImage(id);
             if (tmp.getProperty("points") == null) continue;
             if (tmp.getProperty("bounds") == null) continue;
-            imgmap.put(tmp.getShortTitle(), tmp);
-            Q_imgs.addItem(tmp.getShortTitle());
-            K_imgs.addItem(tmp.getShortTitle());
+            if (tmp.getProperty("name") == null) continue;
+            imgmap.put((String) tmp.getProperty("name"), tmp);
+            Q_imgs.addItem((String) tmp.getProperty("name"));
+            K_imgs.addItem((String) tmp.getProperty("name"));
         }
         panel.add(new JLabel("Questioned Image:"));
         panel.add(Q_imgs);
@@ -158,11 +162,6 @@ public class Align_RunnerGUI {
 
         uiLoaded = true;
     }
-
-    private final JPanel panel;
-    private final JTextArea dummy;
-
-    private final HashMap<String, ImagePlus> imgmap;
 
     public JPanel getPanel() {
         return panel;

@@ -4,20 +4,19 @@ import ij.ImageStack;
 import ij.gui.*;
 import ij.plugin.PlugIn;
 import ij.process.ImageProcessor;
-
-import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.util.prefs.Preferences;
+import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class Image_Loader implements PlugIn {
-    private Image_LoaderGUI gui;
+    boolean markup_begin;
+    private final Image_LoaderGUI gui;
     private JFileChooser chooser;
     private boolean img_valid;
     private boolean markup_valid;
-    boolean markup_begin;
 
     public Image_Loader() {
         this.gui = new Image_LoaderGUI();
@@ -37,7 +36,7 @@ public class Image_Loader implements PlugIn {
         gui.getMarkupLoadButton().addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String prev = prefs.get("PreviousJSONLoad", System.getProperty("user.home").toString());
+                String prev = prefs.get("PreviousJSONLoad", System.getProperty("user.home"));
                 chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("json", "txt");
                 if (validPath == null || validPath.isEmpty()) {
@@ -55,7 +54,7 @@ public class Image_Loader implements PlugIn {
         gui.getImgLoadButton().addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String prev = prefs.get("PreviousImageLoad", System.getProperty("user.home").toString());
+                String prev = prefs.get("PreviousImageLoad", System.getProperty("user.home"));
                 chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("tiff", "jpg", "png");
                 if (validPath == null || validPath.isEmpty()) {
@@ -101,7 +100,6 @@ public class Image_Loader implements PlugIn {
         overlay.addSlice(raw);
         gui.setImg(new ImagePlus(tmp.getShortTitle(), overlay));
         gui.getImg().show();
-        gui.getImg().setTitle("0 Points Marked");
 
         boolean mark_bounds;
         PolygonRoi pol = null;
@@ -157,6 +155,8 @@ public class Image_Loader implements PlugIn {
         pts.setStrokeColor(Color.RED);
         gui.getImg().setProperty("points", pts);
         gui.getImg().setProperty("bounds", pol);
+        gui.getImg().setProperty("name", gui.getImg().getShortTitle());
+        gui.getImg().setTitle(gui.getImg().getProperty("name") + ": " +  pts.size() + " Points Marked");
         /* TODO: make behavior consistent
             when marking anew, the PointRoi does not show on all layers  */
         ij.IJ.setTool("Multi-Point");
@@ -170,7 +170,7 @@ public class Image_Loader implements PlugIn {
                     reconfigurePointRoi();
                 }
                 int numPoints = (gui.getImg().getRoi() != null) ? gui.getImg().getRoi().getContainedPoints().length : 0;
-                gui.getImg().setTitle(numPoints + " Points Marked");
+                gui.getImg().setTitle(gui.getImg().getProperty("name") + ": " +  numPoints + " Points Marked");
             }
         });
     }
