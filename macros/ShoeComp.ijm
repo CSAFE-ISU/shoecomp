@@ -4,7 +4,7 @@
 <hideMenus>
 
 <startupAction>
-eval("js", "IJ.getInstance().setVisible(false)");
+eval("js", "if(IJ.getInstance().isVisible()) IJ.getInstance().setVisible(false);");
 </startupAction>
 
 <line>
