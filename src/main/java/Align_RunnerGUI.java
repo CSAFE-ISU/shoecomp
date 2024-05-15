@@ -43,9 +43,11 @@ public class Align_RunnerGUI {
         this.minRatioT = new JFormattedTextField(NumberFormat.getInstance());
         this.maxRatioT = new JFormattedTextField(NumberFormat.getInstance());
         this.deltaT = new JSlider(1, 50);
+        this.deltaT.setValue(10);
         this.epsilonT = new JSlider(1, 50);
-        this.deltaTVal = new JLabel((deltaT.getMaximum() / 20.0) + " degrees");
-        this.epsilonTVal = new JLabel((epsilonT.getMaximum() / 20.0) + " units");
+        this.epsilonT.setValue(10);
+        this.deltaTVal = new JLabel((deltaT.getValue() / 10.0) + " degrees");
+        this.epsilonTVal = new JLabel((epsilonT.getValue() / 10.0) + " units");
         this.lowerBoundT = new JFormattedTextField(NumberFormat.getInstance());
         this.showScoreT = new JCheckBox("Similarity Score?");
         this.scoreNamesT = new JComboBox<>();
@@ -73,7 +75,8 @@ public class Align_RunnerGUI {
             }
             PolygonRoi pol = (PolygonRoi) img.getProperty("bounds");
             PointRoi pts = (PointRoi) img.getProperty("points");
-            if (pol == null || pts == null) {
+            String name = (String) img.getProperty("name");
+            if (pol == null || pts == null || name == null) {
                 continue;
             }
             valid_images += 1;
