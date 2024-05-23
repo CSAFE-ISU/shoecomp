@@ -2,6 +2,7 @@
 <disableAltClose>
 <disableCtrlAltEdit>
 <hideMenus>
+<noGrid>
 
 <startupAction>
 eval("js", "if(IJ.getInstance().isVisible()) IJ.getInstance().setVisible(false);");
@@ -9,7 +10,7 @@ eval("js", "if(IJ.getInstance().isVisible()) IJ.getInstance().setVisible(false);
 
 <line>
 <button>
-label=<html><h1 style="font-weight: normal">Load Image</h1></html>
+icon=../../../macros/LoadImage.png
 arg=<macro>
 call("Image_Loader.callFromMacro");
 </macro>
@@ -17,7 +18,7 @@ call("Image_Loader.callFromMacro");
 <separator>
 
 <button>
-label=<html><h1 style="font-weight: normal">Save Markup</h1></html>
+icon=../../../macros/SaveMarkup.png
 arg=<macro>
 call("Image_Saver.callFromMacro");
 </macro>
@@ -25,7 +26,7 @@ call("Image_Saver.callFromMacro");
 <separator>
 
 <button>
-label=<html><h1 style="font-weight: normal">Run Alignment</h1></html>
+icon=../../../macros/RunAlignment.png
 arg=<macro>
 call("Align_Runner.callFromMacro");
 </macro>
@@ -35,7 +36,7 @@ call("Align_Runner.callFromMacro");
 <line>
 
 <button>
-label=<html><h1 style="font-weight: normal">About</h1></html>
+icon=../../../macros/About.png
 arg=<macro>
 call("About_Page.callFromMacro");
 </macro>
@@ -43,13 +44,13 @@ call("About_Page.callFromMacro");
 <separator>
 
 <button>
-label=<html><h1 style="font-weight: normal">Debug</h1></html>
+icon=../../../macros/Settings.png
 arg=<hide>
 
 <separator>
 
 <button>
-label=<html><h1 style="font-weight: normal">Exit</h1></html>
+icon=../../../macros/Exit.png
 arg=<macro>
 run("Quit");
 </macro>
