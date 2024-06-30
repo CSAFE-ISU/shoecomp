@@ -22,11 +22,14 @@ This repo contains:
 - ImageJ macros containing necessary functionality to activate/run ShoeComp
 - configuration files for ImageJ plugins
 - icons and related assets
-- A User Manual for ShoeComp
+- A User Guide for ShoeComp -- the `manual` folder contains the TeX source for
+  building the ShoeComp User Guide, along with a copy of TTF fonts from
+  [Montserrat Font Family](https://fonts.google.com/specimen/Montserrat), which
+  are available under the [SIL Open Font License](https://openfontlicense.org/).
 
-At present we have Github Actions runner that provides the ShoeComp plugin as a
-Java JAR, which can be added to Fiji. Soon we will have a Github Actions runner
-that provides releases via ZIP files encapsulating all of the above.
+At present we have a Github Actions runner that provides the ShoeComp plugin as
+a Java JAR, which can be added to Fiji. Soon we will have a Github Actions
+runner that provides releases via ZIP files encapsulating all of the above.
 
 [ij2]: https://imagej.net/software/imagej2/
 [fiji]: https://imagej.net/software/fiji/
