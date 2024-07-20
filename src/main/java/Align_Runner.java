@@ -33,106 +33,56 @@ import org.json.JSONObject;
 
 public class Align_Runner implements PlugIn {
 
-  private final Align_RunnerGUI gui;
+  // private final Align_RunnerGUI gui;
 
-  public Align_Runner() {
-    gui = new Align_RunnerGUI();
-    loadReactions();
-  }
+  public Align_Runner() {}
 
   public static void callFromMacro() {
     Align_Runner x = new Align_Runner();
     x.run("");
   }
 
-  void missingMarkup(ImagePlus img) {
-    gui.getDummy().setText("The Image: " + img.getProperty("name") + " is not loaded properly!");
-    gui.setUiLoaded(false);
-  }
-
-  void loadReactions() {
-    gui.getMinRatioT().setText("0.8");
-    gui.getMaxRatioT().setText("1.2");
-    //gui.getDeltaT().setText("5.0");
-    //gui.getEpsilonT().setText("0.03");
-    gui.getLowerBoundT().setText("10");
-    gui.getShowScoreT().setSelected(true);
-    gui.getQImgs().setSelectedIndex(0);
-    gui.getKImgs().setSelectedIndex(1);
-
-    gui.getQImgs().addActionListener(
-        new ActionListener() {
-          @Override
-          public void actionPerformed(ActionEvent e) {
-            ImagePlus z;
-            PointRoi r;
-            z = gui.getImgMap().get(gui.getQImgs().getSelectedItem());
-            r = (PointRoi) z.getProperty("points");
-            gui.getQimgPoints().setText(r.size() + " points");
-          }
-        });
-
-    gui.getQImgs().addActionListener(
-        new ActionListener() {
-          @Override
-          public void actionPerformed(ActionEvent e) {
-            getNumPoints(gui.getImgMap().get(gui.getQImgs().getSelectedItem()), gui.getQimgPoints());
-          }
-        });
-
-    gui.getKImgs().addActionListener(
-        new ActionListener() {
-          @Override
-          public void actionPerformed(ActionEvent e) {
-            getNumPoints(gui.getImgMap().get(gui.getKImgs().getSelectedItem()), gui.getKimgPoints());
-          }
-        });
-
-    gui.getShowScoreT().addActionListener(
-        new ActionListener() {
-          @Override
-          public void actionPerformed(ActionEvent e) {
-            gui.getScoreNamesT().setEnabled(gui.getShowScoreT().isSelected());
-          }
-        });
-
-    this.getNumPoints(gui.getImgMap().get(gui.getKImgs().getSelectedItem()), gui.getKimgPoints());
-    this.getNumPoints(gui.getImgMap().get(gui.getQImgs().getSelectedItem()), gui.getQimgPoints());
-  }
-
-  void getNumPoints(ImagePlus img, JLabel targ) {
-    if (img == null) return;
-    PointRoi r = (PointRoi) img.getProperty("points");
-    targ.setText(r.size() + " points");
-  }
-
   public void run(String arg) {
+    Align_RunnerGUI gui = new Align_RunnerGUI();
+    gui.loadReactions();
+
     int p =
         JOptionPane.showConfirmDialog(
             null, gui.getPanel(), "Align Images with Markup", JOptionPane.OK_CANCEL_OPTION);
     if (!gui.isUiLoaded() || p == JOptionPane.CANCEL_OPTION) return;
-    runWithProgress();
-  }
 
-  void runWithProgress() {
     ImagePlus q_img = gui.getImgMap().get(gui.getQImgs().getSelectedItem());
     ImagePlus k_img = gui.getImgMap().get(gui.getKImgs().getSelectedItem());
-    PolygonRoi q_bounds = (PolygonRoi) q_img.getProperty("bounds");
-    PolygonRoi k_bounds = (PolygonRoi) k_img.getProperty("bounds");
-    Point[] q_pts = ((PointRoi) q_img.getProperty("points")).getContainedPoints();
-    Point[] k_pts = ((PointRoi) k_img.getProperty("points")).getContainedPoints();
-    /* convert degrees to radians */
-    //double delta = Double.parseDouble(gui.getDeltaT().getText())* (Math.PI) / 180.0;
+    /* angular distortion: convert degrees to radians */
     double delta = (gui.getDeltaT().getValue() / 10.0) * (Math.PI) / 180.0;
-
-    //double epsilon = Double.parseDouble(gui.getEpsilonT().getText());
+    /* scaling distortion: unclear what units this is */
     double epsilon = gui.getEpsilonT().getValue() / 10;
     double min_ratio = Double.parseDouble(gui.getMinRatioT().getText());
     double max_ratio = Double.parseDouble(gui.getMaxRatioT().getText());
     int lower_bound = Integer.parseInt(gui.getLowerBoundT().getText());
-    int upper_bound = Math.min(q_pts.length, k_pts.length);
     boolean show_score = gui.getShowScoreT().isSelected();
     String score_name = (String) gui.getScoreNamesT().getSelectedItem();
+    runWithProgress(
+        q_img, k_img, delta, epsilon, min_ratio, max_ratio, lower_bound, show_score, score_name);
+  }
+
+  void runWithProgress(
+      ImagePlus q_img,
+      ImagePlus k_img,
+      double delta,
+      double epsilon,
+      double min_ratio,
+      double max_ratio,
+      int lower_bound,
+      boolean show_score,
+      String score_name) {
+    PolygonRoi q_bounds = (PolygonRoi) q_img.getProperty("bounds");
+    PolygonRoi k_bounds = (PolygonRoi) k_img.getProperty("bounds");
+    Point[] q_pts = ((PointRoi) q_img.getProperty("points")).getContainedPoints();
+    Point[] k_pts = ((PointRoi) k_img.getProperty("points")).getContainedPoints();
+    int upper_bound = Math.min(q_pts.length, k_pts.length);
+
+    String[] targ_zip = {""};
 
     String[] works = {
       "Starting...",
@@ -199,10 +149,10 @@ public class Align_Runner implements PlugIn {
             int returnValue = chooser.showSaveDialog(null);
             if (returnValue == JFileChooser.APPROVE_OPTION) {
               File file = chooser.getSelectedFile();
-              gui.setTargZip(file.getAbsolutePath());
-              if (!gui.getTargZip().isEmpty()) {
-                if (!gui.getTargZip().endsWith(".zip")) {
-                  gui.setTargZip(gui.getTargZip() + ".zip");
+              targ_zip[0] = file.getAbsolutePath();
+              if (!targ_zip[0].isEmpty()) {
+                if (!targ_zip[0].endsWith(".zip")) {
+                  targ_zip[0] = targ_zip[0] + ".zip";
                 }
                 synchronized (status) {
                   status[0] = 5;
@@ -252,10 +202,10 @@ public class Align_Runner implements PlugIn {
                         System.out.println("max clique");
                         clq = this.get_clique();
                         synchronized (status) {
-                          //IJ.log("Original was " + status[0]);
+                          // IJ.log("Original was " + status[0]);
                           if (status[0] == 0) status[0] = 4;
                           else if (status[0] != -1) status[0] = 2;
-                          //IJ.log("Transformed into " + status[0]);
+                          // IJ.log("Transformed into " + status[0]);
                           status.notify();
                         }
                         break;
@@ -418,7 +368,7 @@ public class Align_Runner implements PlugIn {
                 res.addSlice(q1);
                 res.addSlice(k1);
                 res.addSlice(q2);
-                return new ImagePlus("Overlay", res); ////////
+                return new ImagePlus("Overlay", res); // //////
               }
 
               boolean saveOverlay(
@@ -436,7 +386,7 @@ public class Align_Runner implements PlugIn {
                 Stroke ks = new BasicStroke(18F);
                 Color kcol = new Color(0, 0, 255, 157);
 
-                System.out.println("Saving to " + gui.getTargZip());
+                System.out.println("Saving to " + targ_zip);
                 DataOutputStream out;
                 FileInfo info;
                 ImagePlus img;
@@ -515,7 +465,7 @@ public class Align_Runner implements PlugIn {
 
                 try {
                   ZipOutputStream zos =
-                      new ZipOutputStream(Files.newOutputStream(Paths.get(gui.getTargZip())));
+                      new ZipOutputStream(Files.newOutputStream(Paths.get(targ_zip[0])));
                   out = new DataOutputStream(new BufferedOutputStream(zos, 4096));
                   int n = res_stack.size();
                   for (int j = 1; j <= n; ++j) {

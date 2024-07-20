@@ -5,6 +5,8 @@ import ij.gui.PolygonRoi;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.text.NumberFormat;
 import java.util.Dictionary;
 import java.util.HashMap;
@@ -27,7 +29,6 @@ public class Align_RunnerGUI {
     private final JPanel panel;
     private final JTextArea dummy;
     private final HashMap<String, ImagePlus> imgmap;
-    private String targ_zip;
     private boolean uiLoaded;
 
     public Align_RunnerGUI() {
@@ -52,7 +53,6 @@ public class Align_RunnerGUI {
         this.showScoreT = new JCheckBox("Similarity Score?");
         this.scoreNamesT = new JComboBox<>();
         this.uiLoaded = false;
-        this.targ_zip = "";
         this.loadUI();
     }
 
@@ -141,13 +141,11 @@ public class Align_RunnerGUI {
         });
 
         panel.add(new JLabel("Maximum Angular Distortion"));
-        //panel.add(deltaT);
         panel.add(deltaT);
         panel.add(deltaTVal);
         panel.add(new JLabel(""));
 
         panel.add(new JLabel("Maximum Scaling Distortion"));
-        //panel.add(epsilonT);
         panel.add(epsilonT);
         panel.add(epsilonTVal);
         panel.add(new JLabel(""));
@@ -164,6 +162,67 @@ public class Align_RunnerGUI {
         panel.add(new JLabel(""));
 
         uiLoaded = true;
+    }
+
+    void missingMarkup(ImagePlus img) {
+        this.getDummy().setText("The Image: " + img.getProperty("name") + " is not loaded properly!");
+        this.setUiLoaded(false);
+    }
+
+    void getNumPoints(ImagePlus img, JLabel targ) {
+        if (img == null) return;
+        PointRoi r = (PointRoi) img.getProperty("points");
+        targ.setText(r.size() + " points");
+    }
+
+    void loadReactions() {
+        this.getMinRatioT().setText("0.8");
+        this.getMaxRatioT().setText("1.2");
+        //gui.getDeltaT().setText("5.0");
+        //gui.getEpsilonT().setText("0.03");
+        this.getLowerBoundT().setText("10");
+        this.getShowScoreT().setSelected(true);
+        this.getQImgs().setSelectedIndex(0);
+        this.getKImgs().setSelectedIndex(1);
+
+        this.getQImgs().addActionListener(
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        ImagePlus z;
+                        PointRoi r;
+                        z = getImgMap().get(getQImgs().getSelectedItem());
+                        r = (PointRoi) z.getProperty("points");
+                        getQimgPoints().setText(r.size() + " points");
+                    }
+                });
+
+        this.getQImgs().addActionListener(
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        getNumPoints(getImgMap().get(getQImgs().getSelectedItem()), getQimgPoints());
+                    }
+                });
+
+        this.getKImgs().addActionListener(
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        getNumPoints(getImgMap().get(getKImgs().getSelectedItem()), getKimgPoints());
+                    }
+                });
+
+        this.getShowScoreT().addActionListener(
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        getScoreNamesT().setEnabled(getShowScoreT().isSelected());
+                    }
+                });
+
+        this.getNumPoints(getImgMap().get(getKImgs().getSelectedItem()), getKimgPoints());
+        this.getNumPoints(getImgMap().get(getQImgs().getSelectedItem()), getQimgPoints());
     }
 
     public JPanel getPanel() {
@@ -218,14 +277,6 @@ public class Align_RunnerGUI {
 
     public JComboBox<String> getScoreNamesT() {
         return scoreNamesT;
-    }
-
-    public String getTargZip() {
-        return targ_zip;
-    }
-
-    public void setTargZip(String str) {
-        this.targ_zip = str;
     }
 
     public boolean isUiLoaded() {
