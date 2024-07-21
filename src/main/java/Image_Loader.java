@@ -56,7 +56,7 @@ public class Image_Loader implements PlugIn {
             public void actionPerformed(ActionEvent e) {
                 String prev = prefs.get("PreviousImageLoad", System.getProperty("user.home"));
                 chooser = new JFileChooser(prev);
-                String validPath = checkFileLoad("tiff", "jpg", "png");
+                String validPath = checkFileLoad("tiff", "jpg", "png", "tif", "jpeg");
                 if (validPath == null || validPath.isEmpty()) {
                     JOptionPane.showMessageDialog(null, "Invalid File!");
                     img_valid = false;
