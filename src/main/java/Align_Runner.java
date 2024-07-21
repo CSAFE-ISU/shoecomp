@@ -182,7 +182,11 @@ public class Align_Runner implements PlugIn {
 
   public void run(String arg) {
     AlignProgression prog = new AlignProgression();
+    q_img.lock();
+    k_img.lock();
     prog.run(this);
+    q_img.unlock();
+    k_img.unlock();
   }
 
   void find_clique() {
@@ -469,6 +473,7 @@ class AlignProgression {
   void loadUI() {
     frame = new JFrame();
     frame.setTitle("processing....");
+    frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
     frame.setSize(320, 240);
 
     subpanel = new JPanel(new GridBagLayout());
@@ -540,36 +545,47 @@ class AlignProgression {
   }
 
   public void run(Align_Runner x) {
-    Thread work = new Thread(new Runnable() {
-      @Override
-      public void run() {
-        x.q_img.lock();
-        x.k_img.lock();
-        try {
-          while (stillRunning()) {
-            doWork(x); /* TODO: how to interrupt while doing work? */
-            if(Thread.currentThread().isInterrupted()) throw new InterruptedException("user cancellation");
-          }
-          stepFinishWork();
-        } catch (InterruptedException e) {
-          System.out.println("canceled: " + e.getMessage() + " " + e);
-          stepFailCancel();
-        } catch (Exception e) {
-          System.out.println("failed: " + e.getMessage() + " " + e);
-          e.printStackTrace();
-          stepFailCancel();
-        } finally {
-          frame.setVisible(false);
-          if (x.rimg != null) x.rimg.close();
-          if (x.histPlot != null) x.histPlot.close();
-          x.q_img.unlock();
-          x.k_img.unlock();
-        }
-      }
-    });
+    Thread work =
+        new Thread(
+            new Runnable() {
+              @Override
+              public void run() {
+                try {
+                  while (stillRunning()) {
+                    doWork(x); /* TODO: how to interrupt while doing work? */
+                    if (Thread.currentThread().isInterrupted())
+                      throw new InterruptedException("user cancellation");
+                  }
+                  stepFinishWork();
+                } catch (Exception e) {
+                  if (e instanceof InterruptedException) {
+                    System.out.println("canceled: " + e);
+                  } else {
+                    e.printStackTrace();
+                  }
+                  stepFailCancel();
+                } finally {
+                  frame.setVisible(false);
+                }
+              }
+            });
     cancelRun.addActionListener(new ProgressInterruptListener(work, status));
     frame.setVisible(true);
     work.start();
+    try {
+      work.join();
+    } catch (InterruptedException e) {
+      System.out.println("possible disposal" + e);
+    } finally {
+      if (x.rimg != null) {
+        x.rimg.close();
+        x.rimg = null;
+      }
+      if (x.histPlot != null) {
+        x.histPlot.close();
+        x.histPlot = null;
+      }
+    }
   }
 
   public void changeUI() {
