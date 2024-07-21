@@ -156,17 +156,15 @@ public class Align_Runner implements PlugIn {
             null, gui.getPanel(), "Align Images with Markup", JOptionPane.OK_CANCEL_OPTION);
     if (!gui.isUiLoaded() || p == JOptionPane.CANCEL_OPTION) return;
 
-    ImagePlus q_img = gui.getImgMap().get(gui.getQImgs().getSelectedItem());
-    ImagePlus k_img = gui.getImgMap().get(gui.getKImgs().getSelectedItem());
-    /* angular distortion: convert degrees to radians */
-    double delta = (gui.getDeltaT().getValue() / 10.0) * (Math.PI) / 180.0;
-    /* scaling distortion: unclear what units this is */
-    double epsilon = gui.getEpsilonT().getValue() / 10;
-    double min_ratio = Double.parseDouble(gui.getMinRatioT().getText());
-    double max_ratio = Double.parseDouble(gui.getMaxRatioT().getText());
-    int lower_bound = Integer.parseInt(gui.getLowerBoundT().getText());
-    boolean show_score = gui.getShowScoreT().isSelected();
-    String score_name = (String) gui.getScoreNamesT().getSelectedItem();
+    ImagePlus q_img = gui.getQImg();
+    ImagePlus k_img = gui.getKImg();
+    double delta = gui.getDelta();
+    double epsilon = gui.getEpsilon();
+    double min_ratio = gui.getMinRatio();
+    double max_ratio = gui.getMaxRatio();
+    int lower_bound = gui.getLowerBound();
+    boolean show_score = gui.getShowScore();
+    String score_name = gui.getScoreName();
 
     Align_Runner x =
         new Align_Runner(
