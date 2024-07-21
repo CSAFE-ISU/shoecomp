@@ -31,18 +31,123 @@ import org.ahgamut.clqmtch.StackDFS;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-public class Align_Runner implements PlugIn {
+enum StatusProgress {
+  CANCELED(0) {},
+  STARTING(1) {
+    @Override
+    public String report() {
+      return "Starting...";
+    }
+  },
+  ALIGNING(5) {
+    @Override
+    public String report() {
+      return "Checking scales and aligning...";
+    }
+  },
+  SIMILARITY(25) {
+    @Override
+    public String report() {
+      return "Calculating similarity scores...";
+    }
+  },
+  OVERLAY(50) {
+    @Override
+    public String report() {
+      return "Creating Overlay...";
+    }
+  },
+  ZIPSELECT(75) {
+    @Override
+    public String report() {
+      return "Save alignment?";
+    }
+  },
+  SAVING(95) {
+    @Override
+    public String report() {
+      return "Saving ZIP File";
+    }
+  },
+  COMPLETED(100) {
+    @Override
+    public String report() {
+      return "Complete";
+    }
+  };
 
-  // private final Align_RunnerGUI gui;
+  private final int progressValue;
 
-  public Align_Runner() {}
-
-  public static void callFromMacro() {
-    Align_Runner x = new Align_Runner();
-    x.run("");
+  StatusProgress(int progressValue) {
+    this.progressValue = progressValue;
   }
 
-  public void run(String arg) {
+  public int getProgressValue() {
+    return this.progressValue;
+  }
+
+  public String report() {
+    return "Canceled.";
+  }
+}
+
+public class Align_Runner implements PlugIn {
+  ImagePlus q_img;
+  Point[] q_pts;
+  PolygonRoi q_bounds;
+
+  ImagePlus k_img;
+  Point[] k_pts;
+  PolygonRoi k_bounds;
+  double delta;
+  double epsilon;
+  double min_ratio;
+  double max_ratio;
+  int lower_bound;
+  int upper_bound;
+  boolean show_score;
+  String score_name;
+
+  /* these are post-processing */
+  ArrayList<Integer> clq;
+  AlignImagePairFromPoints<SimilarityModel2D> aip;
+  ImagePlus rimg;
+  ImagePlus histPlot;
+  double score;
+
+  public Align_Runner(
+      ImagePlus q_img,
+      ImagePlus k_img,
+      double delta,
+      double epsilon,
+      double min_ratio,
+      double max_ratio,
+      int lower_bound,
+      boolean show_score,
+      String score_name) {
+    this.q_img = q_img;
+    this.q_pts = ((PointRoi) q_img.getProperty("points")).getContainedPoints();
+    this.q_bounds = (PolygonRoi) q_img.getProperty("bounds");
+    this.k_img = k_img;
+    this.k_pts = ((PointRoi) k_img.getProperty("points")).getContainedPoints();
+    this.k_bounds = (PolygonRoi) k_img.getProperty("bounds");
+    this.delta = delta;
+    this.epsilon = epsilon;
+    this.min_ratio = min_ratio;
+    this.max_ratio = max_ratio;
+    this.lower_bound = lower_bound;
+    this.upper_bound = Math.min(q_pts.length, k_pts.length);
+    this.show_score = show_score;
+    this.score_name = score_name;
+    /* */
+    clq = new ArrayList<>();
+    aip = new AlignImagePairFromPoints<>(SimilarityModel2D::new);
+    rimg = null;
+    histPlot = null;
+    score = 0.0;
+  }
+
+  public static void callFromMacro() {
     Align_RunnerGUI gui = new Align_RunnerGUI();
     gui.loadReactions();
 
@@ -62,55 +167,320 @@ public class Align_Runner implements PlugIn {
     int lower_bound = Integer.parseInt(gui.getLowerBoundT().getText());
     boolean show_score = gui.getShowScoreT().isSelected();
     String score_name = (String) gui.getScoreNamesT().getSelectedItem();
-    runWithProgress(
-        q_img, k_img, delta, epsilon, min_ratio, max_ratio, lower_bound, show_score, score_name);
+
+    Align_Runner x =
+        new Align_Runner(
+            q_img,
+            k_img,
+            delta,
+            epsilon,
+            min_ratio,
+            max_ratio,
+            lower_bound,
+            show_score,
+            score_name);
+    x.run("");
   }
 
-  void runWithProgress(
-      ImagePlus q_img,
-      ImagePlus k_img,
-      double delta,
-      double epsilon,
-      double min_ratio,
-      double max_ratio,
-      int lower_bound,
-      boolean show_score,
-      String score_name) {
-    PolygonRoi q_bounds = (PolygonRoi) q_img.getProperty("bounds");
-    PolygonRoi k_bounds = (PolygonRoi) k_img.getProperty("bounds");
-    Point[] q_pts = ((PointRoi) q_img.getProperty("points")).getContainedPoints();
-    Point[] k_pts = ((PointRoi) k_img.getProperty("points")).getContainedPoints();
-    int upper_bound = Math.min(q_pts.length, k_pts.length);
+  public void run(String arg) {
+    AlignProgression prog = new AlignProgression();
+    prog.run(this);
+  }
 
-    String[] targ_zip = {""};
+  void find_clique() {
+    /* find max clique (TODO: lower_bound) */
+    System.out.println("max clique");
+    Mapper3 x = new Mapper3();
+    org.ahgamut.clqmtch.Graph g =
+        x.construct_graph(
+            q_pts, q_pts.length, k_pts, k_pts.length, delta, epsilon, min_ratio, max_ratio);
+    org.ahgamut.clqmtch.StackDFS s = new StackDFS();
+    s.process_graph(g, lower_bound, upper_bound); /* warning is glitch */
+    System.out.println(g.toString());
+    this.clq = g.get_max_clique();
+  }
 
-    String[] works = {
-      "Starting...",
-      "Checking scales and aligning...",
-      "Calculating similarity scores...",
-      "Creating Overlay...",
-      "Save alignment?",
-      "Saving ZIP File"
-    };
-    int[] progressLevel = {5, 25, 50, 75, 80, 99};
-    final int[] status = {0};
-    Thread work = null;
-    Thread ui = null;
+  void transformImages() throws NotEnoughDataPointsException, IllDefinedDataPointsException {
+    aip.load(q_pts, k_pts, clq);
+    System.out.println("fitting tform...");
+    aip.estimate();
+    System.out.println("should be calcing scores");
+  }
 
-    JFrame frame = new JFrame();
+  void calculateScore() {
+    Point[] qp1 = q_pts;
+    ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
+    /* TODO: score is currently set to clique_fraction always,
+    have a generalized approach for different scores */
+    score = (1.0 * qc_ind.size()) / qp1.length;
+  }
+
+  void viewScoreWithHistogram() throws FileNotFoundException {
+    ScoreViewer s = ScoreViewer.fromJSONInFolder(score_name);
+    this.histPlot = s.showScoreWithReference(score);
+  }
+
+  public void createOverlay() {
+    ij.ImageStack q_stack = q_img.getImageStack();
+    Point[] qp1 = q_pts;
+    ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
+    Stroke qs = new BasicStroke(18F);
+    Color qcol = new Color(255, 0, 0, 157);
+
+    ij.ImageStack k_stack = k_img.getImageStack();
+    Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
+    PolygonRoi mapped_k_bounds = aip.mapPolygonRoi(k_bounds, false);
+    ArrayList<Integer> kc_ind = aip.getCorrK_ind();
+    Stroke ks = new BasicStroke(18F);
+    Color kcol = new Color(0, 0, 255, 157);
+
+    /* render necessary things on overlay */
+    BufferedImage bi;
+    Graphics2D g;
+
+    bi = getWritableImage(q_stack.getProcessor(1));
+    g = (Graphics2D) bi.getGraphics();
+    burnPoints(g, qp1, qc_ind, qs, qcol);
+    burnPoints(g, kp1, kc_ind, ks, kcol);
+    ImageProcessor q1 = rasterize(bi).getProcessor();
+
+    bi = getWritableImage(q_stack.getProcessor(2));
+    g = (Graphics2D) bi.getGraphics();
+    burnPoints(g, qp1, qc_ind, qs, qcol);
+    burnPoints(g, kp1, kc_ind, ks, kcol);
+    ImageProcessor q2 = rasterize(bi).getProcessor();
+
+    /* transform images via fit */
+    ImageProcessor k1 = k_stack.getProcessor(1).createProcessor(q1.getWidth(), q1.getHeight());
+    aip.mapImage(k_stack.getProcessor(1), false, k1);
+
+    ImageProcessor k10 = k1.convertToByteProcessor().duplicate();
+    ShapeRoi common_bounds = new ShapeRoi(mapped_k_bounds);
+    common_bounds = common_bounds.and(new ShapeRoi(q_bounds));
+    k10.setColor(Color.WHITE);
+    k10.fillOutside(common_bounds);
+    k10.setColorModel(CustomColorModelFactory.getDefaultModel());
+    bi = getWritableImage(q_stack.getProcessor(1));
+    g = (Graphics2D) bi.getGraphics();
+    g.drawImage(k10.createImage(), 0, 0, null);
+    burnPoints(g, qp1, qc_ind, qs, qcol);
+    burnPoints(g, kp1, kc_ind, ks, kcol);
+    ImageProcessor ovr = rasterize(bi).getProcessor();
+
+    bi = getWritableImage(k1);
+    g = (Graphics2D) bi.getGraphics();
+    burnPoints(g, qp1, qc_ind, qs, qcol);
+    burnPoints(g, kp1, kc_ind, ks, kcol);
+    k1 = rasterize(bi).getProcessor();
+
+    ij.ImageStack res = new ImageStack();
+    res.addSlice(ovr);
+    res.addSlice(q1);
+    res.addSlice(k1);
+    res.addSlice(q2);
+    this.rimg = new ImagePlus("Overlay", res); // //////
+  }
+
+  BufferedImage getWritableImage(ImageProcessor imp) {
+    BufferedImage bi =
+        new BufferedImage(imp.getWidth(), imp.getHeight(), BufferedImage.TYPE_INT_ARGB);
+    Graphics2D g = (Graphics2D) bi.getGraphics();
+    g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    g.drawImage(imp.createImage(), 0, 0, null);
+    return bi;
+  }
+
+  ImagePlus rasterize(BufferedImage bi) {
+    return new ImagePlus("", new ColorProcessor(bi));
+  }
+
+  boolean saveOverlay(String targ_zip, JLabel currentWork) {
+    ij.ImageStack q_stack = q_img.getImageStack();
+    Point[] qp0 = q_pts;
+    ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
+    Stroke qs = new BasicStroke(18F);
+    Color qcol = new Color(255, 0, 0, 157);
+
+    ij.ImageStack k_stack = k_img.getImageStack();
+    Point[] kp0 = k_pts;
+    Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
+    ArrayList<Integer> kc_ind = aip.getCorrK_ind();
+    Stroke ks = new BasicStroke(18F);
+    Color kcol = new Color(0, 0, 255, 157);
+
+    System.out.println("Saving to " + targ_zip);
+    DataOutputStream out;
+    FileInfo info;
+    ImagePlus img;
+    TiffEncoder te;
+
+    BufferedImage bi;
+    Graphics2D g;
+
+    ImageProcessor temp;
+    MarkupData m;
+    ImageStack res_stack = new ImageStack();
+
+    /* add Q image */
+    bi = getWritableImage(q_stack.getProcessor(3));
+    res_stack.addSlice("Q_image", rasterize(bi).getProcessor());
+
+    /* add Q mask */
+    bi = getWritableImage(q_stack.getProcessor(2));
+    res_stack.addSlice("Q_mask", rasterize(bi).getProcessor());
+
+    /* add Q annotations */
+    bi =
+        getWritableImage(
+            q_stack.getProcessor(2).createProcessor(q_stack.getWidth(), q_stack.getHeight()));
+    g = (Graphics2D) bi.getGraphics();
+    burnPoints(g, qp0, qc_ind, qs, qcol);
+    res_stack.addSlice("Q_points", rasterize(bi).getProcessor());
+
+    /* add K image */
+    bi = getWritableImage(k_stack.getProcessor(3));
+    res_stack.addSlice("K_image", rasterize(bi).getProcessor());
+
+    /* add K mask */
+    bi = getWritableImage(k_stack.getProcessor(2));
+    res_stack.addSlice("K_mask", rasterize(bi).getProcessor());
+
+    /* add K annotations */
+    bi =
+        getWritableImage(
+            k_stack.getProcessor(2).createProcessor(k_stack.getWidth(), k_stack.getHeight()));
+    g = (Graphics2D) bi.getGraphics();
+    burnPoints(g, kp0, kc_ind, ks, kcol);
+    res_stack.addSlice("K_points", rasterize(bi).getProcessor());
+
+    /* add transformed K image */
+    temp = k_stack.getProcessor(3).createProcessor(q_stack.getWidth(), q_stack.getHeight());
+    aip.mapImage(k_stack.getProcessor(3), false, temp);
+    bi = getWritableImage(temp);
+    res_stack.addSlice("K_image_MAPPED", rasterize(bi).getProcessor());
+
+    /* add transformed K mask */
+    temp = k_stack.getProcessor(2).createProcessor(q_stack.getWidth(), q_stack.getHeight());
+    aip.mapImage(k_stack.getProcessor(2), false, temp);
+    bi = getWritableImage(temp);
+    res_stack.addSlice("K_mask_MAPPED", rasterize(bi).getProcessor());
+
+    /* add transformed K annotations */
+    temp = k_stack.getProcessor(2).createProcessor(q_stack.getWidth(), q_stack.getHeight());
+    bi = getWritableImage(temp);
+    g = (Graphics2D) bi.getGraphics();
+    burnPoints(g, kp1, kc_ind, ks, kcol);
+    res_stack.addSlice("K_points_MAPPED", rasterize(bi).getProcessor());
+
+    try {
+      ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(Paths.get(targ_zip)));
+      out = new DataOutputStream(new BufferedOutputStream(zos, 4096));
+      int n = res_stack.size();
+      for (int j = 1; j <= n; ++j) {
+        String tmp = res_stack.getSliceLabel(j);
+        currentWork.setText("Saving in ZIP: " + tmp);
+        img = new ImagePlus("", res_stack.getProcessor(j));
+        info = img.getFileInfo();
+        zos.putNextEntry(new ZipEntry(tmp + ".tiff"));
+        te = new TiffEncoder(info);
+        System.out.println(res_stack.getSliceLabel(j));
+        te.write(out);
+      }
+
+      m =
+          MarkupData.fromROIPair(
+              (PolygonRoi) q_img.getProperty("bounds"), (PointRoi) q_img.getProperty("points"));
+      zos.putNextEntry(new ZipEntry("Q_markup.json"));
+      zos.write(m.toJSON().toString().getBytes(StandardCharsets.UTF_8));
+
+      m =
+          MarkupData.fromROIPair(
+              (PolygonRoi) k_img.getProperty("bounds"), (PointRoi) k_img.getProperty("points"));
+      zos.putNextEntry(new ZipEntry("K_markup.json"));
+      zos.write(m.toJSON().toString().getBytes(StandardCharsets.UTF_8));
+
+      JSONObject res = new JSONObject();
+      res.put("alignment", aip.toJSON());
+      if (show_score) {
+        JSONObject sc = new JSONObject();
+        sc.put("name", score_name);
+        sc.put("value", score);
+        res.put("score", sc);
+      }
+      zos.putNextEntry(new ZipEntry("align_and_score.json"));
+      zos.write(res.toString().getBytes(StandardCharsets.UTF_8));
+
+      out.close();
+      return true;
+    } catch (Exception e) {
+      System.out.println("failed: " + e.getMessage() + " " + e);
+      e.printStackTrace();
+      return false;
+    }
+  }
+
+  void burnPoints(Graphics2D g, Point[] pts, ArrayList<Integer> clq_ind, Stroke s, Color c) {
+    g.setStroke(s);
+    g.setPaint(c);
+    for (int j = 0; j < pts.length; ++j) {
+      if (clq_ind.contains(j)) {
+        g.drawRect(pts[j].x, pts[j].y, 53, 53);
+      } else {
+        g.drawOval(pts[j].x, pts[j].y, 75, 75);
+      }
+    }
+  }
+}
+
+class ProgressInterruptListener implements ActionListener {
+  Thread t;
+  StatusProgress s;
+
+  ProgressInterruptListener(Thread t, StatusProgress s) {
+    super();
+    this.t = t;
+    this.s = s;
+  }
+
+  @Override
+  public void actionPerformed(ActionEvent actionEvent) {
+    s = StatusProgress.CANCELED;
+    t.interrupt();
+  }
+}
+
+class AlignProgression {
+  String targ_zip;
+  StatusProgress status;
+  int prevstat;
+  JFrame frame;
+  JPanel subpanel;
+  GridBagConstraints gbc;
+  JProgressBar bar;
+  JLabel currentWork;
+  JButton saveOK;
+  JButton cancelRun;
+
+  AlignProgression() {
+    targ_zip = "";
+    status = StatusProgress.STARTING;
+    loadUI();
+    loadReactions();
+  }
+
+  void loadUI() {
+    frame = new JFrame();
     frame.setTitle("processing....");
     frame.setSize(320, 240);
 
-    JPanel subpanel = new JPanel(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
+    subpanel = new JPanel(new GridBagLayout());
+    gbc = new GridBagConstraints();
     gbc.fill = GridBagConstraints.HORIZONTAL;
 
-    JProgressBar bar = new JProgressBar();
-    JLabel currentWork = new JLabel();
-    JButton saveOK = new JButton("Save Info");
-    saveOK.setEnabled(false);
-    JButton cancelRun = new JButton("Cancel");
-    cancelRun.setEnabled(true);
+    bar = new JProgressBar();
+    currentWork = new JLabel();
+    saveOK = new JButton("Save Info");
+    cancelRun = new JButton("Cancel");
 
     gbc.gridx = 0;
     gbc.ipady = 40;
@@ -138,7 +508,11 @@ public class Align_Runner implements PlugIn {
     gbc.gridwidth = 1;
     subpanel.add(cancelRun, gbc);
     frame.setContentPane(subpanel);
+    frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+  }
 
+  void loadReactions() {
+    saveOK.setEnabled(false);
     saveOK.addActionListener(
         new ActionListener() {
           @Override
@@ -148,433 +522,127 @@ public class Align_Runner implements PlugIn {
             chooser.setDialogTitle("Save Info into a ZIP File");
             int returnValue = chooser.showSaveDialog(null);
             if (returnValue == JFileChooser.APPROVE_OPTION) {
-              File file = chooser.getSelectedFile();
-              targ_zip[0] = file.getAbsolutePath();
-              if (!targ_zip[0].isEmpty()) {
-                if (!targ_zip[0].endsWith(".zip")) {
-                  targ_zip[0] = targ_zip[0] + ".zip";
-                }
-                synchronized (status) {
-                  status[0] = 5;
-                  status.notify();
-                }
-              }
+              stepSetZipTarget(chooser);
             }
           }
         });
+    cancelRun.setEnabled(true);
+  }
 
-    cancelRun.addActionListener(
-        new ActionListener() {
-          @Override
-          public void actionPerformed(ActionEvent e) {
-            synchronized (status) {
-              status[0] = -1;
-              status.notify();
-            }
+  public boolean stillRunning() {
+    return status != StatusProgress.COMPLETED && status != StatusProgress.CANCELED;
+  }
+
+  void setStatus(StatusProgress s) {
+    if (stillRunning()) status = s;
+  }
+
+  public boolean atSameStep() {
+    return prevstat == status.getProgressValue();
+  }
+
+  public void run(Align_Runner x) {
+    Thread work = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        x.q_img.lock();
+        x.k_img.lock();
+        try {
+          while (stillRunning()) {
+            doWork(x); /* TODO: how to interrupt while doing work? */
+            if(Thread.currentThread().isInterrupted()) throw new InterruptedException("user cancellation");
           }
-        });
-
-    work =
-        new Thread(
-            new Runnable() {
-              @Override
-              public void run() {
-                q_img.lock();
-                k_img.lock();
-                java.util.ArrayList<Integer> clq = new ArrayList<>();
-                AlignImagePairFromPoints<SimilarityModel2D> aip =
-                    new AlignImagePairFromPoints<>(SimilarityModel2D::new);
-                ImagePlus rimg = null;
-                ImagePlus histPlot = null;
-                double score = 0.0;
-
-                try {
-                  while (status[0] >= 0 && status[0] < 6) {
-                    switch (status[0]) {
-                      case 0:
-                        synchronized (status) {
-                          if (status[0] != -1) status[0] = 1;
-                          status.notify();
-                        }
-                        break;
-                      case 1:
-                        /* find max clique (TODO: lower_bound) */
-                        System.out.println("max clique");
-                        clq = this.get_clique();
-                        synchronized (status) {
-                          // IJ.log("Original was " + status[0]);
-                          if (status[0] == 0) status[0] = 4;
-                          else if (status[0] != -1) status[0] = 2;
-                          // IJ.log("Transformed into " + status[0]);
-                          status.notify();
-                        }
-                        break;
-                      case 2:
-                        /* find transform fit */
-                        aip.load(q_pts, k_pts, clq);
-                        System.out.println("fitting tform...");
-                        aip.estimate();
-                        System.out.println("should be calcing scores");
-                        score = calculateScore(aip, score_name);
-                        synchronized (status) {
-                          if (status[0] != -1) status[0] = 3;
-                          status.notify();
-                        }
-                        break;
-                      case 3:
-                        rimg = createOverlay(aip);
-                        histPlot = viewScoreWithHistogram(score_name, score);
-                        histPlot.show();
-                        saveOK.setEnabled(true);
-                        cancelRun.setEnabled(true);
-                        rimg.show();
-                        synchronized (status) {
-                          if (status[0] != -1) status[0] = 4;
-                          status.notify();
-                        }
-                        cancelRun.setText("Don't Save");
-                        break;
-                      case 4:
-                        synchronized (status) {
-                          while (status[0] == 4) status.wait();
-                        }
-                        break;
-                      case 5:
-                        saveOK.setEnabled(false);
-                        cancelRun.setEnabled(false);
-                        frame.setTitle("Saving...");
-                        currentWork.setText("Saving...");
-                        if (!saveOverlay(aip, score_name, score)) {
-                          throw new IOException("unable to save zip");
-                        }
-                        synchronized (status) {
-                          if (status[0] != -1) status[0] = 6;
-                          status.notify();
-                        }
-                        break;
-                      default:
-                        System.out.println("waiting");
-                        Thread.sleep(250);
-                    }
-                  }
-                  System.out.println("finished work thread");
-                  synchronized (status) {
-                    if (status[0] != -1) status[0] = 6;
-                    status.notify();
-                  }
-                } catch (Exception e) {
-                  System.out.println("failed: " + e.getMessage() + " " + e);
-                  e.printStackTrace();
-                  synchronized (status) {
-                    status[0] = -1;
-                    status.notify();
-                  }
-                }
-                if (rimg != null) rimg.close();
-                if (histPlot != null) histPlot.close();
-                q_img.unlock();
-                k_img.unlock();
-              }
-
-              ArrayList<Integer> get_clique() {
-                Mapper3 x = new Mapper3();
-                org.ahgamut.clqmtch.Graph g =
-                    x.construct_graph(
-                        q_pts,
-                        q_pts.length,
-                        k_pts,
-                        k_pts.length,
-                        delta,
-                        epsilon,
-                        min_ratio,
-                        max_ratio);
-                status[0] += 1;
-                org.ahgamut.clqmtch.StackDFS s = new StackDFS();
-                s.process_graph(g, lower_bound, upper_bound); /* warning is glitch */
-                System.out.println(g.toString());
-                return g.get_max_clique();
-              }
-
-              double calculateScore(AlignImagePairFromPoints<?> aip, String scoreName) {
-                Point[] qp1 = q_pts;
-                ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
-                /* TODO: score is currently set to clique_fraction always,
-                have a generalized approach for different scores */
-                return (1.0 * qc_ind.size()) / qp1.length;
-              }
-
-              ImagePlus viewScoreWithHistogram(String scoreName, double score)
-                  throws FileNotFoundException {
-                ScoreViewer s = ScoreViewer.fromJSONInFolder(scoreName);
-                return s.showScoreWithReference(score);
-              }
-
-              ImagePlus createOverlay(AlignImagePairFromPoints<?> aip) {
-                ij.ImageStack q_stack = q_img.getImageStack();
-                Point[] qp1 = q_pts;
-                ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
-                Stroke qs = new BasicStroke(18F);
-                Color qcol = new Color(255, 0, 0, 157);
-
-                ij.ImageStack k_stack = k_img.getImageStack();
-                Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
-                PolygonRoi mapped_k_bounds = aip.mapPolygonRoi(k_bounds, false);
-                ArrayList<Integer> kc_ind = aip.getCorrK_ind();
-                Stroke ks = new BasicStroke(18F);
-                Color kcol = new Color(0, 0, 255, 157);
-
-                /* render necessary things on overlay */
-                BufferedImage bi;
-                Graphics2D g;
-
-                bi = getWritableImage(q_stack.getProcessor(1));
-                g = (Graphics2D) bi.getGraphics();
-                burnPoints(g, qp1, qc_ind, qs, qcol);
-                burnPoints(g, kp1, kc_ind, ks, kcol);
-                ImageProcessor q1 = rasterize(bi).getProcessor();
-
-                bi = getWritableImage(q_stack.getProcessor(2));
-                g = (Graphics2D) bi.getGraphics();
-                burnPoints(g, qp1, qc_ind, qs, qcol);
-                burnPoints(g, kp1, kc_ind, ks, kcol);
-                ImageProcessor q2 = rasterize(bi).getProcessor();
-
-                /* transform images via fit */
-                ImageProcessor k1 =
-                    k_stack.getProcessor(1).createProcessor(q1.getWidth(), q1.getHeight());
-                aip.mapImage(k_stack.getProcessor(1), false, k1);
-
-                ImageProcessor k10 = k1.convertToByteProcessor().duplicate();
-                ShapeRoi common_bounds = new ShapeRoi(mapped_k_bounds);
-                common_bounds = common_bounds.and(new ShapeRoi(q_bounds));
-                k10.setColor(Color.WHITE);
-                k10.fillOutside(common_bounds);
-                k10.setColorModel(CustomColorModelFactory.getDefaultModel());
-                bi = getWritableImage(q_stack.getProcessor(1));
-                g = (Graphics2D) bi.getGraphics();
-                g.drawImage(k10.createImage(), 0, 0, null);
-                burnPoints(g, qp1, qc_ind, qs, qcol);
-                burnPoints(g, kp1, kc_ind, ks, kcol);
-                ImageProcessor ovr = rasterize(bi).getProcessor();
-
-                bi = getWritableImage(k1);
-                g = (Graphics2D) bi.getGraphics();
-                burnPoints(g, qp1, qc_ind, qs, qcol);
-                burnPoints(g, kp1, kc_ind, ks, kcol);
-                k1 = rasterize(bi).getProcessor();
-
-                ij.ImageStack res = new ImageStack();
-                res.addSlice(ovr);
-                res.addSlice(q1);
-                res.addSlice(k1);
-                res.addSlice(q2);
-                return new ImagePlus("Overlay", res); // //////
-              }
-
-              boolean saveOverlay(
-                  AlignImagePairFromPoints<?> aip, String score_name, double score) {
-                ij.ImageStack q_stack = q_img.getImageStack();
-                Point[] qp0 = q_pts;
-                ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
-                Stroke qs = new BasicStroke(18F);
-                Color qcol = new Color(255, 0, 0, 157);
-
-                ij.ImageStack k_stack = k_img.getImageStack();
-                Point[] kp0 = k_pts;
-                Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
-                ArrayList<Integer> kc_ind = aip.getCorrK_ind();
-                Stroke ks = new BasicStroke(18F);
-                Color kcol = new Color(0, 0, 255, 157);
-
-                System.out.println("Saving to " + targ_zip);
-                DataOutputStream out;
-                FileInfo info;
-                ImagePlus img;
-                TiffEncoder te;
-
-                BufferedImage bi;
-                Graphics2D g;
-
-                ImageProcessor temp;
-                MarkupData m;
-                ImageStack res_stack = new ImageStack();
-
-                /* add Q image */
-                bi = getWritableImage(q_stack.getProcessor(3));
-                res_stack.addSlice("Q_image", rasterize(bi).getProcessor());
-
-                /* add Q mask */
-                bi = getWritableImage(q_stack.getProcessor(2));
-                res_stack.addSlice("Q_mask", rasterize(bi).getProcessor());
-
-                /* add Q annotations */
-                bi =
-                    getWritableImage(
-                        q_stack
-                            .getProcessor(2)
-                            .createProcessor(q_stack.getWidth(), q_stack.getHeight()));
-                g = (Graphics2D) bi.getGraphics();
-                burnPoints(g, qp0, qc_ind, qs, qcol);
-                res_stack.addSlice("Q_points", rasterize(bi).getProcessor());
-
-                /* add K image */
-                bi = getWritableImage(k_stack.getProcessor(3));
-                res_stack.addSlice("K_image", rasterize(bi).getProcessor());
-
-                /* add K mask */
-                bi = getWritableImage(k_stack.getProcessor(2));
-                res_stack.addSlice("K_mask", rasterize(bi).getProcessor());
-
-                /* add K annotations */
-                bi =
-                    getWritableImage(
-                        k_stack
-                            .getProcessor(2)
-                            .createProcessor(k_stack.getWidth(), k_stack.getHeight()));
-                g = (Graphics2D) bi.getGraphics();
-                burnPoints(g, kp0, kc_ind, ks, kcol);
-                res_stack.addSlice("K_points", rasterize(bi).getProcessor());
-
-                /* add transformed K image */
-                temp =
-                    k_stack
-                        .getProcessor(3)
-                        .createProcessor(q_stack.getWidth(), q_stack.getHeight());
-                aip.mapImage(k_stack.getProcessor(3), false, temp);
-                bi = getWritableImage(temp);
-                res_stack.addSlice("K_image_MAPPED", rasterize(bi).getProcessor());
-
-                /* add transformed K mask */
-                temp =
-                    k_stack
-                        .getProcessor(2)
-                        .createProcessor(q_stack.getWidth(), q_stack.getHeight());
-                aip.mapImage(k_stack.getProcessor(2), false, temp);
-                bi = getWritableImage(temp);
-                res_stack.addSlice("K_mask_MAPPED", rasterize(bi).getProcessor());
-
-                /* add transformed K annotations */
-                temp =
-                    k_stack
-                        .getProcessor(2)
-                        .createProcessor(q_stack.getWidth(), q_stack.getHeight());
-                bi = getWritableImage(temp);
-                g = (Graphics2D) bi.getGraphics();
-                burnPoints(g, kp1, kc_ind, ks, kcol);
-                res_stack.addSlice("K_points_MAPPED", rasterize(bi).getProcessor());
-
-                try {
-                  ZipOutputStream zos =
-                      new ZipOutputStream(Files.newOutputStream(Paths.get(targ_zip[0])));
-                  out = new DataOutputStream(new BufferedOutputStream(zos, 4096));
-                  int n = res_stack.size();
-                  for (int j = 1; j <= n; ++j) {
-                    String tmp = res_stack.getSliceLabel(j);
-                    currentWork.setText("Saving in ZIP: " + tmp);
-                    img = new ImagePlus("", res_stack.getProcessor(j));
-                    info = img.getFileInfo();
-                    zos.putNextEntry(new ZipEntry(tmp + ".tiff"));
-                    te = new TiffEncoder(info);
-                    System.out.println(res_stack.getSliceLabel(j));
-                    te.write(out);
-                  }
-
-                  m =
-                      MarkupData.fromROIPair(
-                          (PolygonRoi) q_img.getProperty("bounds"),
-                          (PointRoi) q_img.getProperty("points"));
-                  zos.putNextEntry(new ZipEntry("Q_markup.json"));
-                  zos.write(m.toJSON().toString().getBytes(StandardCharsets.UTF_8));
-
-                  m =
-                      MarkupData.fromROIPair(
-                          (PolygonRoi) k_img.getProperty("bounds"),
-                          (PointRoi) k_img.getProperty("points"));
-                  zos.putNextEntry(new ZipEntry("K_markup.json"));
-                  zos.write(m.toJSON().toString().getBytes(StandardCharsets.UTF_8));
-
-                  JSONObject res = new JSONObject();
-                  res.put("alignment", aip.toJSON());
-                  if (show_score) {
-                    JSONObject sc = new JSONObject();
-                    sc.put("name", score_name);
-                    sc.put("value", score);
-                    res.put("score", sc);
-                  }
-                  zos.putNextEntry(new ZipEntry("align_and_score.json"));
-                  zos.write(res.toString().getBytes(StandardCharsets.UTF_8));
-
-                  out.close();
-                  return true;
-                } catch (Exception e) {
-                  System.out.println("failed: " + e.getMessage() + " " + e);
-                  e.printStackTrace();
-                  return false;
-                }
-              }
-
-              BufferedImage getWritableImage(ImageProcessor imp) {
-                BufferedImage bi =
-                    new BufferedImage(imp.getWidth(), imp.getHeight(), BufferedImage.TYPE_INT_ARGB);
-                Graphics2D g = (Graphics2D) bi.getGraphics();
-                g.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g.drawImage(imp.createImage(), 0, 0, null);
-                return bi;
-              }
-
-              ImagePlus rasterize(BufferedImage bi) {
-                return new ImagePlus("", new ColorProcessor(bi));
-              }
-
-              void burnPoints(
-                  Graphics2D g, Point[] pts, ArrayList<Integer> clq_ind, Stroke s, Color c) {
-                g.setStroke(s);
-                g.setPaint(c);
-                for (int j = 0; j < pts.length; ++j) {
-                  if (clq_ind.contains(j)) {
-                    g.drawRect(pts[j].x, pts[j].y, 53, 53);
-                  } else {
-                    g.drawOval(pts[j].x, pts[j].y, 75, 75);
-                  }
-                }
-              }
-            });
-
-    ui =
-        new Thread(
-            new Runnable() {
-              @Override
-              public void run() {
-                try {
-                  int prevstat = -1;
-
-                  while (status[0] >= 0 && status[0] < 6) {
-                    bar.setValue(progressLevel[status[0]]);
-                    if (status[0] != 5) {
-                      currentWork.setText(works[status[0]]);
-                    }
-                    synchronized (status) {
-                      while (status[0] == prevstat) {
-                        status.wait();
-                      }
-                    }
-                    prevstat = status[0];
-                  }
-                  frame.setVisible(false);
-                  status[0] = -1;
-                  System.out.println("finished ui thread");
-                } catch (Exception e) {
-                  frame.setVisible(false);
-                  e.printStackTrace();
-                }
-              }
-            });
-
-    frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+          stepFinishWork();
+        } catch (InterruptedException e) {
+          System.out.println("canceled: " + e.getMessage() + " " + e);
+          stepFailCancel();
+        } catch (Exception e) {
+          System.out.println("failed: " + e.getMessage() + " " + e);
+          e.printStackTrace();
+          stepFailCancel();
+        } finally {
+          frame.setVisible(false);
+          if (x.rimg != null) x.rimg.close();
+          if (x.histPlot != null) x.histPlot.close();
+          x.q_img.unlock();
+          x.k_img.unlock();
+        }
+      }
+    });
+    cancelRun.addActionListener(new ProgressInterruptListener(work, status));
     frame.setVisible(true);
-    ui.start();
     work.start();
+  }
+
+  public void changeUI() {
+    prevstat = status.getProgressValue();
+    if (stillRunning()) {
+      bar.setValue(status.getProgressValue());
+      currentWork.setText(status.report());
+    } else {
+      frame.setVisible(false);
+    }
+  }
+
+  public void doWork(Align_Runner x)
+      throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
+    switch (status) {
+      case STARTING:
+        setStatus(StatusProgress.ALIGNING);
+        break;
+      case ALIGNING:
+        x.find_clique();
+        setStatus(StatusProgress.SIMILARITY);
+        break;
+      case SIMILARITY:
+        x.transformImages();
+        x.calculateScore();
+        setStatus(StatusProgress.OVERLAY);
+        break;
+      case OVERLAY:
+        x.createOverlay();
+        x.viewScoreWithHistogram();
+        x.histPlot.show();
+        saveOK.setEnabled(true);
+        cancelRun.setEnabled(true);
+        x.rimg.show();
+        setStatus(StatusProgress.ZIPSELECT);
+        cancelRun.setText("Don't Save");
+        break;
+      case SAVING:
+        saveOK.setEnabled(false);
+        cancelRun.setEnabled(false);
+        frame.setTitle("Saving...");
+        currentWork.setText("Saving...");
+        if (!x.saveOverlay(targ_zip, currentWork)) {
+          throw new IOException("unable to save zip");
+        }
+        setStatus(StatusProgress.COMPLETED);
+        break;
+    }
+    if (!atSameStep()) changeUI();
+  }
+
+  void stepSetZipTarget(JFileChooser chooser) {
+    File file = chooser.getSelectedFile();
+    targ_zip = file.getAbsolutePath();
+    if (!targ_zip.isEmpty()) {
+      if (!targ_zip.endsWith(".zip")) {
+        targ_zip = targ_zip + ".zip";
+      }
+      status = StatusProgress.SAVING;
+      changeUI();
+    }
+  }
+
+  void stepFailCancel() {
+    status = StatusProgress.CANCELED;
+    changeUI();
+  }
+
+  void stepFinishWork() {
+    setStatus(StatusProgress.COMPLETED);
+    System.out.println("finished work thread");
   }
 }
 
