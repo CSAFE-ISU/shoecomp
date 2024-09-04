@@ -726,8 +726,6 @@ class AlignImagePairFromPoints<T extends mpicbg.models.AbstractModel<T>> {
       /* save the backward mapping */
       corr_q2k.add(new PointMatch(new mpicbg.models.Point(qc[j]), new mpicbg.models.Point(kc[j])));
     }
-    Collections.sort(qc_ind);
-    Collections.sort(kc_ind);
     tform_q2k.fit(corr_q2k);
     tform_k2q.fit(corr_k2q);
   }
