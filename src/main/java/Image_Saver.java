@@ -125,7 +125,7 @@ public class Image_Saver {
     int p =
         JOptionPane.showConfirmDialog(
             null, gui.getPanel(), "Save Image and Markup", JOptionPane.OK_CANCEL_OPTION);
-    if (p == JOptionPane.CANCEL_OPTION) return;
+    if (p != JOptionPane.OK_OPTION) return;
     if (!img_valid && !markup_valid) return;
 
     ImagePlus tmp = gui.getImgMap().get(Objects.requireNonNull(gui.getImgs().getSelectedItem()).toString());
