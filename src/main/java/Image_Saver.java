@@ -47,8 +47,8 @@ public class Image_Saver {
             String prev = prefs.get("PreviousImageSave", System.getProperty("user.home").toString());
             chooser = new JFileChooser(prev);
             String validPath = checkFileSave("tiff", "jpg", "png");
-            if (!validPath.endsWith(".tiff") || !validPath.endsWith(".tif")
-             || !validPath.endsWith(".jpg") || !validPath.endsWith(".png")) {
+            if (!validPath.endsWith(".tiff") && !validPath.endsWith(".tif")
+             && !validPath.endsWith(".jpg") && !validPath.endsWith(".png")) {
               validPath += ".tiff";
             }
             if (validPath == null || validPath.isEmpty()) {
@@ -80,7 +80,7 @@ public class Image_Saver {
             String prev = prefs.get("PreviousJSONSave", System.getProperty("user.home").toString());
             chooser = new JFileChooser(prev);
             String validPath = checkFileSave("json", "txt");
-            if (!validPath.endsWith(".json") || !validPath.endsWith(".txt")) {
+            if (!validPath.endsWith(".json") && !validPath.endsWith(".txt")) {
               validPath += ".json";
             }
             if (validPath == null || validPath.isEmpty()) {
