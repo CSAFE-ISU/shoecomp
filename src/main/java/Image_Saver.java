@@ -59,7 +59,12 @@ public class Image_Saver {
               img_valid = true;
               File file = new File(validPath);
               if (file.exists()) {
-                JOptionPane.showMessageDialog(null, "File Already Exists!");
+                int save_image = JOptionPane.showConfirmDialog(null, "File Already Exists!\n" +
+                        "Do you want to overwrite?", "Alert", JOptionPane.YES_NO_OPTION);
+                if (save_image == JOptionPane.NO_OPTION) {
+                  img_valid = false;
+                  gui.getImgPath().setText("");
+                }
               }
               String selected = new File(validPath).getParent();
               prefs.put("PreviousImageSave", selected);
@@ -84,7 +89,12 @@ public class Image_Saver {
             } else {
               File file = new File(validPath);
               if (file.exists()) {
-                JOptionPane.showMessageDialog(null, "File Already Exists!");
+                int save_markup = JOptionPane.showConfirmDialog(null, "File Already Exists!\n" +
+                        "Do you want to overwrite?", "Alert", JOptionPane.YES_NO_OPTION);
+                if (save_markup == JOptionPane.NO_OPTION) {
+                  markup_valid = false;
+                  gui.getMarkupPath().setText("");
+                }
               }
               gui.getMarkupPath().setText(validPath);
               markup_valid = true;
