@@ -226,14 +226,14 @@ public class Align_Runner implements PlugIn {
     ij.ImageStack q_stack = q_img.getImageStack();
     Point[] qp1 = q_pts;
     ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
-    Stroke qs = new BasicStroke(18F);
+    Stroke qs = new BasicStroke(3);
     Color qcol = new Color(255, 0, 0, 157);
 
     ij.ImageStack k_stack = k_img.getImageStack();
     Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
     PolygonRoi mapped_k_bounds = aip.mapPolygonRoi(k_bounds, false);
     ArrayList<Integer> kc_ind = aip.getCorrK_ind();
-    Stroke ks = new BasicStroke(18F);
+    Stroke ks = new BasicStroke(3);
     Color kcol = new Color(0, 0, 255, 157);
 
     /* render necessary things on overlay */
@@ -300,14 +300,14 @@ public class Align_Runner implements PlugIn {
     ij.ImageStack q_stack = q_img.getImageStack();
     Point[] qp0 = q_pts;
     ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
-    Stroke qs = new BasicStroke(18F);
+    Stroke qs = new BasicStroke(3);
     Color qcol = new Color(255, 0, 0, 157);
 
     ij.ImageStack k_stack = k_img.getImageStack();
     Point[] kp0 = k_pts;
     Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
     ArrayList<Integer> kc_ind = aip.getCorrK_ind();
-    Stroke ks = new BasicStroke(18F);
+    Stroke ks = new BasicStroke(3);
     Color kcol = new Color(0, 0, 255, 157);
 
     System.out.println("Saving to " + targ_zip);
@@ -425,10 +425,14 @@ public class Align_Runner implements PlugIn {
     g.setStroke(s);
     g.setPaint(c);
     for (int j = 0; j < pts.length; ++j) {
+            int x = pts[j].x;
+      int y = pts[j].y;
       if (clq_ind.contains(j)) {
-        g.drawRect(pts[j].x, pts[j].y, 53, 53);
+//        g.drawRect(x, y, 53, 53);
+        g.drawRect(x, y, 5, 5);
       } else {
-        g.drawOval(pts[j].x, pts[j].y, 75, 75);
+//        g.drawOval(x, y, 75, 75);
+        g.drawRect(x, y, 10, 10);
       }
     }
   }
