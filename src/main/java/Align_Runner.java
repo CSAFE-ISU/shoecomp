@@ -1,3 +1,4 @@
+import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.gui.*;
@@ -209,6 +210,12 @@ public class Align_Runner implements PlugIn {
     System.out.println("should be calcing scores");
   }
 
+  int calculateRectDim(ImagePlus img) {
+    int q_h = img.getCanvas().getHeight();
+    int q_w = img.getCanvas().getWidth();
+    return Math.min(q_h, q_w) / 25;
+  }
+
   void calculateScore() {
     Point[] qp1 = q_pts;
     ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
@@ -228,6 +235,7 @@ public class Align_Runner implements PlugIn {
     ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
     Stroke qs = new BasicStroke(3);
     Color qcol = new Color(255, 0, 0, 157);
+    int q_rect_dim = calculateRectDim(q_img);
 
     ij.ImageStack k_stack = k_img.getImageStack();
     Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
@@ -235,6 +243,7 @@ public class Align_Runner implements PlugIn {
     ArrayList<Integer> kc_ind = aip.getCorrK_ind();
     Stroke ks = new BasicStroke(3);
     Color kcol = new Color(0, 0, 255, 157);
+    int k_rect_dim = calculateRectDim(k_img);
 
     /* render necessary things on overlay */
     BufferedImage bi;
@@ -242,14 +251,15 @@ public class Align_Runner implements PlugIn {
 
     bi = getWritableImage(q_stack.getProcessor(1));
     g = (Graphics2D) bi.getGraphics();
-    burnPoints(g, qp1, qc_ind, qs, qcol);
-    burnPoints(g, kp1, kc_ind, ks, kcol);
+
+    burnPoints(g, qp1, qc_ind, qs, qcol, q_rect_dim);
+    burnPoints(g, kp1, kc_ind, ks, kcol, k_rect_dim);
     ImageProcessor q1 = rasterize(bi).getProcessor();
 
     bi = getWritableImage(q_stack.getProcessor(2));
     g = (Graphics2D) bi.getGraphics();
-    burnPoints(g, qp1, qc_ind, qs, qcol);
-    burnPoints(g, kp1, kc_ind, ks, kcol);
+    burnPoints(g, qp1, qc_ind, qs, qcol, q_rect_dim);
+    burnPoints(g, kp1, kc_ind, ks, kcol, k_rect_dim);
     ImageProcessor q2 = rasterize(bi).getProcessor();
 
     /* transform images via fit */
@@ -265,14 +275,14 @@ public class Align_Runner implements PlugIn {
     bi = getWritableImage(q_stack.getProcessor(1));
     g = (Graphics2D) bi.getGraphics();
     g.drawImage(k10.createImage(), 0, 0, null);
-    burnPoints(g, qp1, qc_ind, qs, qcol);
-    burnPoints(g, kp1, kc_ind, ks, kcol);
+    burnPoints(g, qp1, qc_ind, qs, qcol, q_rect_dim);
+    burnPoints(g, kp1, kc_ind, ks, kcol, k_rect_dim);
     ImageProcessor ovr = rasterize(bi).getProcessor();
 
     bi = getWritableImage(k1);
     g = (Graphics2D) bi.getGraphics();
-    burnPoints(g, qp1, qc_ind, qs, qcol);
-    burnPoints(g, kp1, kc_ind, ks, kcol);
+    burnPoints(g, qp1, qc_ind, qs, qcol, q_rect_dim);
+    burnPoints(g, kp1, kc_ind, ks, kcol, k_rect_dim);
     k1 = rasterize(bi).getProcessor();
 
     ij.ImageStack res = new ImageStack();
@@ -302,6 +312,7 @@ public class Align_Runner implements PlugIn {
     ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
     Stroke qs = new BasicStroke(3);
     Color qcol = new Color(255, 0, 0, 157);
+    int q_rect_dim = calculateRectDim(q_img);
 
     ij.ImageStack k_stack = k_img.getImageStack();
     Point[] kp0 = k_pts;
@@ -309,6 +320,7 @@ public class Align_Runner implements PlugIn {
     ArrayList<Integer> kc_ind = aip.getCorrK_ind();
     Stroke ks = new BasicStroke(3);
     Color kcol = new Color(0, 0, 255, 157);
+    int k_rect_dim = calculateRectDim(k_img);
 
     System.out.println("Saving to " + targ_zip);
     DataOutputStream out;
@@ -336,7 +348,7 @@ public class Align_Runner implements PlugIn {
         getWritableImage(
             q_stack.getProcessor(2).createProcessor(q_stack.getWidth(), q_stack.getHeight()));
     g = (Graphics2D) bi.getGraphics();
-    burnPoints(g, qp0, qc_ind, qs, qcol);
+    burnPoints(g, qp0, qc_ind, qs, qcol, q_rect_dim);
     res_stack.addSlice("Q_points", rasterize(bi).getProcessor());
 
     /* add K image */
@@ -352,7 +364,7 @@ public class Align_Runner implements PlugIn {
         getWritableImage(
             k_stack.getProcessor(2).createProcessor(k_stack.getWidth(), k_stack.getHeight()));
     g = (Graphics2D) bi.getGraphics();
-    burnPoints(g, kp0, kc_ind, ks, kcol);
+    burnPoints(g, kp0, kc_ind, ks, kcol, k_rect_dim);
     res_stack.addSlice("K_points", rasterize(bi).getProcessor());
 
     /* add transformed K image */
@@ -371,7 +383,7 @@ public class Align_Runner implements PlugIn {
     temp = k_stack.getProcessor(2).createProcessor(q_stack.getWidth(), q_stack.getHeight());
     bi = getWritableImage(temp);
     g = (Graphics2D) bi.getGraphics();
-    burnPoints(g, kp1, kc_ind, ks, kcol);
+    burnPoints(g, kp1, kc_ind, ks, kcol, k_rect_dim);
     res_stack.addSlice("K_points_MAPPED", rasterize(bi).getProcessor());
 
     try {
@@ -421,18 +433,16 @@ public class Align_Runner implements PlugIn {
     }
   }
 
-  void burnPoints(Graphics2D g, Point[] pts, ArrayList<Integer> clq_ind, Stroke s, Color c) {
+  void burnPoints(Graphics2D g, Point[] pts, ArrayList<Integer> clq_ind, Stroke s, Color c, int rimgDim) {
     g.setStroke(s);
     g.setPaint(c);
     for (int j = 0; j < pts.length; ++j) {
-            int x = pts[j].x;
+      int x = pts[j].x;
       int y = pts[j].y;
       if (clq_ind.contains(j)) {
-//        g.drawRect(x, y, 53, 53);
-        g.drawRect(x, y, 5, 5);
+        g.drawRect(x, y, rimgDim, rimgDim);
       } else {
-//        g.drawOval(x, y, 75, 75);
-        g.drawRect(x, y, 10, 10);
+        g.drawOval(x, y, rimgDim, rimgDim);
       }
     }
   }
