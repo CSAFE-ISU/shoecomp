@@ -150,6 +150,12 @@ public class Align_Runner implements PlugIn {
 
   public static void callFromMacro() {
     Align_RunnerGUI gui = new Align_RunnerGUI();
+
+    if (gui.getQImg() == null || gui.getKImg() == null) {
+        JOptionPane.showMessageDialog(null, "You must open two images to align!");
+        return;
+    }
+
     gui.loadReactions();
 
     int p =
