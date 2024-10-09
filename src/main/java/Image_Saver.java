@@ -51,7 +51,7 @@ public class Image_Saver {
              && !validPath.endsWith(".jpg") && !validPath.endsWith(".png")) {
               validPath += ".tiff";
             }
-            if (validPath == null || validPath.isEmpty()) {
+            if (validPath == null || validPath.isEmpty() || validPath.charAt(0) == '.') {
               JOptionPane.showMessageDialog(null, "Invalid File!");
               img_valid = false;
             } else {
@@ -67,7 +67,12 @@ public class Image_Saver {
                 }
               }
               String selected = new File(validPath).getParent();
-              prefs.put("PreviousImageSave", selected);
+              if (selected != null)
+                prefs.put("PreviousImageSave", selected);
+              else {
+                img_valid = false;
+                gui.getImgPath().setText("");
+              }
             }
           }
         });
@@ -83,7 +88,7 @@ public class Image_Saver {
             if (!validPath.endsWith(".json") && !validPath.endsWith(".txt")) {
               validPath += ".json";
             }
-            if (validPath == null || validPath.isEmpty()) {
+            if (validPath == null || validPath.isEmpty() || validPath.charAt(0) == '.') {
               JOptionPane.showMessageDialog(null, "Invalid File!");
               markup_valid = false;
             } else {
@@ -101,6 +106,10 @@ public class Image_Saver {
               String selected = new File(validPath).getParent();
               if (selected != null)
                 prefs.put("PreviousJSONSave", selected);
+              else {
+                markup_valid = false;
+                gui.getMarkupPath().setText("");
+              }
             }
           }
         });
