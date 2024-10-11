@@ -100,6 +100,19 @@ public class Image_Loader implements PlugIn {
         overlay.addSlice(mask);
         overlay.addSlice(raw);
         gui.setImg(new ImagePlus(tmp.getShortTitle(), overlay));
+
+        int[] idList = WindowManager.getIDList();
+        int c = 0;
+        if (idList != null) {
+            for (int id : idList) {
+                ImagePlus tmp2 = WindowManager.getImage(id);
+                String name = tmp2.getProperty("name").toString();
+                if (name.contains(gui.getImg().getTitle()))
+                    c++;
+            }
+            gui.getImg().setTitle(gui.getImg().getTitle() + "-" + c);
+        }
+
         gui.getImg().show();
 
         boolean mark_bounds;
