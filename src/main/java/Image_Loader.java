@@ -9,6 +9,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.util.prefs.Preferences;
+import java.util.regex.Pattern;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
@@ -107,10 +108,12 @@ public class Image_Loader implements PlugIn {
             for (int id : idList) {
                 ImagePlus tmp2 = WindowManager.getImage(id);
                 String name = tmp2.getProperty("name").toString();
-                if (name.contains(gui.getImg().getTitle()))
+                String guiImgName = gui.getImg().getTitle();
+                if (name.matches(Pattern.quote(guiImgName) + "(?:-\\d+)?"))
                     c++;
             }
-            gui.getImg().setTitle(gui.getImg().getTitle() + "-" + c);
+            if (c > 0)
+                gui.getImg().setTitle(gui.getImg().getTitle() + "-" + c);
         }
 
         gui.getImg().show();
