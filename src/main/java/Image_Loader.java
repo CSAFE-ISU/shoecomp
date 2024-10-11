@@ -1,6 +1,7 @@
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
+import ij.WindowManager;
 import ij.gui.*;
 import ij.plugin.PlugIn;
 import ij.process.ImageProcessor;
@@ -85,7 +86,7 @@ public class Image_Loader implements PlugIn {
     public void run(String arg) {
         int p = JOptionPane.showConfirmDialog(null, gui.getPanel(),
                 "Load Image and Markup", JOptionPane.OK_CANCEL_OPTION);
-        if (p == JOptionPane.CANCEL_OPTION) return;
+        if (p == JOptionPane.CANCEL_OPTION || p == JOptionPane.CLOSED_OPTION) return;
         if (!img_valid) return;
 
         ImagePlus tmp = IJ.openImage(gui.getImgPath().getText());
