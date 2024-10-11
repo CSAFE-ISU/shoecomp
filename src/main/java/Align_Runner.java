@@ -161,7 +161,7 @@ public class Align_Runner implements PlugIn {
     int p =
         JOptionPane.showConfirmDialog(
             null, gui.getPanel(), "Align Images with Markup", JOptionPane.OK_CANCEL_OPTION);
-    if (!gui.isUiLoaded() || p == JOptionPane.CANCEL_OPTION) return;
+    if (!gui.isUiLoaded() || p == JOptionPane.CANCEL_OPTION || p == JOptionPane.CLOSED_OPTION) return;
 
     ImagePlus q_img = gui.getQImg();
     ImagePlus k_img = gui.getKImg();
