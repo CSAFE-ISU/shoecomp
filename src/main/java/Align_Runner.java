@@ -18,7 +18,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
@@ -27,6 +26,7 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import mpicbg.ij.TransformMapping;
 import mpicbg.models.*;
+import org.ahgamut.clqmtch.Graph;
 import org.ahgamut.clqmtch.StackDFS;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -39,10 +39,16 @@ enum StatusProgress {
       return "Starting...";
     }
   },
-  ALIGNING(5) {
+  RESCALING(5) {
     @Override
     public String report() {
-      return "Checking scales and aligning...";
+      return "Checking scales...";
+    }
+  },
+  ALIGNING(10) {
+    @Override
+    public String report() {
+      return "Aligning...";
     }
   },
   SIMILARITY(25) {
@@ -109,6 +115,7 @@ public class Align_Runner implements PlugIn {
   String score_name;
 
   /* these are post-processing */
+  AdjMat amat;
   ArrayList<Integer> clq;
   AlignImagePairFromPoints<SimilarityModel2D> aip;
   ImagePlus rimg;
@@ -140,6 +147,7 @@ public class Align_Runner implements PlugIn {
     this.show_score = show_score;
     this.score_name = score_name;
     /* */
+    amat = null;
     clq = new ArrayList<>();
     aip = new AlignImagePairFromPoints<>(SimilarityModel2D::new);
     rimg = null;
@@ -189,16 +197,22 @@ public class Align_Runner implements PlugIn {
     k_img.unlock();
   }
 
+  void make_adjmat() {
+    Mapper3 x = new Mapper3();
+    System.out.println("creating the graph");
+    this.amat = x.construct_graph(
+            q_pts, q_pts.length, k_pts, k_pts.length, delta, epsilon, min_ratio, max_ratio);
+  }
+
   void find_clique() {
     /* find max clique (TODO: lower_bound) */
     System.out.println("max clique");
-    Mapper3 x = new Mapper3();
-    org.ahgamut.clqmtch.Graph g =
-        x.construct_graph(
-            q_pts, q_pts.length, k_pts, k_pts.length, delta, epsilon, min_ratio, max_ratio);
+    org.ahgamut.clqmtch.Graph g = new Graph();
+    g.load_matrix(amat.matsize, amat.mat);
+
     org.ahgamut.clqmtch.StackDFS s = new StackDFS();
     s.process_graph(g, lower_bound, upper_bound); /* warning is glitch */
-    System.out.println(g.toString());
+    System.out.println(g);
     this.clq = g.get_max_clique();
   }
 
@@ -602,6 +616,10 @@ class AlignProgression {
       throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
     switch (status) {
       case STARTING:
+        setStatus(StatusProgress.RESCALING);
+        break;
+      case RESCALING:
+        x.make_adjmat();
         setStatus(StatusProgress.ALIGNING);
         break;
       case ALIGNING:

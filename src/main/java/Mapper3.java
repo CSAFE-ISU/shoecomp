@@ -45,7 +45,7 @@ public class Mapper3 {
     t[ii].construct(x, y, z, p[x], p[y], p[z]);
   }
 
-  public org.ahgamut.clqmtch.Graph construct_graph(
+  public AdjMat construct_graph(
       java.awt.Point[] q_pts,
       int qlen,
       java.awt.Point[] k_pts,
@@ -155,14 +155,13 @@ public class Mapper3 {
                         }
                       });
             });
-    res.load_matrix(adjmat.matsize, adjmat.mat);
 
     /* reset ratios to default */
     MIN_RATIO = MIN_RATIO_DEFAULT;
     MAX_RATIO = MAX_RATIO_DEFAULT;
 
     /* send the answer back */
-    return res;
+    return adjmat;
   }
 
   private static class Triple {
