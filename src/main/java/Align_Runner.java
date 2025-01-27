@@ -27,6 +27,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import mpicbg.ij.TransformMapping;
 import mpicbg.models.*;
 import org.ahgamut.clqmtch.Graph;
+import org.ahgamut.clqmtch.HeuristicSearch;
 import org.ahgamut.clqmtch.StackDFS;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -204,16 +205,39 @@ public class Align_Runner implements PlugIn {
             q_pts, q_pts.length, k_pts, k_pts.length, delta, epsilon, min_ratio, max_ratio);
   }
 
+  int get_heuristic_lb() {
+    ArrayList<Integer> s1 = amat.get_pruned_indices(lower_bound);
+    if(s1.isEmpty()) {
+      return 0;
+    }
+    AdjMat submat = amat.get_submat(s1);
+    Graph g = new Graph();
+    g.load_matrix(submat.matsize, submat.mat);
+    HeuristicSearch h = new HeuristicSearch();
+    h.process_graph(g);
+    ArrayList<Integer> clq = g.get_max_clique();
+    return clq.size();
+  }
+
   void find_clique() {
-    /* find max clique (TODO: lower_bound) */
     System.out.println("max clique");
-    org.ahgamut.clqmtch.Graph g = new Graph();
-    g.load_matrix(amat.matsize, amat.mat);
+    int lb = get_heuristic_lb();
+    // System.out.printf("heuristic gave: %d, lb is: %d\n", lb, lower_bound);
+    lb = Math.max(lb, lower_bound);
 
     org.ahgamut.clqmtch.StackDFS s = new StackDFS();
-    s.process_graph(g, lower_bound, upper_bound); /* warning is glitch */
-    System.out.println(g);
-    this.clq = g.get_max_clique();
+    ArrayList<Integer> s2 = amat.get_pruned_indices(lb);
+    AdjMat s2m = amat.get_submat(s2);
+    Graph subg = new Graph();
+    subg.load_matrix(s2m.matsize, s2m.mat);
+    // System.out.printf("%d, %s\n", amat.matsize, subg.toString());
+    s.process_graph(subg, lb, upper_bound); /* warning is glitch */
+
+    ArrayList<Integer> subclq = subg.get_max_clique();
+    this.clq = new ArrayList<>();
+    for (int x : subclq) {
+        clq.add(s2.get(x));
+    }
   }
 
   void transformImages() throws NotEnoughDataPointsException, IllDefinedDataPointsException {
