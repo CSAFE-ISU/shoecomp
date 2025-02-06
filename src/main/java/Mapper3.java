@@ -1,6 +1,3 @@
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.function.IntConsumer;
 import java.util.stream.IntStream;
 
 public class Mapper3 {
@@ -87,7 +84,6 @@ public class Mapper3 {
 
     AdjMat adjmat = new AdjMat(qlen * klen);
     // default initialized to zero
-    org.ahgamut.clqmtch.Graph res = new org.ahgamut.clqmtch.Graph();
 
     /* fill the first set of triples */
     IntStream.range(0, M)

@@ -26,9 +26,9 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import mpicbg.ij.TransformMapping;
 import mpicbg.models.*;
-import org.ahgamut.clqmtch.Graph;
-import org.ahgamut.clqmtch.HeuristicSearch;
-import org.ahgamut.clqmtch.StackDFS;
+import io.github.ahgamut.clqmtch.Graph;
+import io.github.ahgamut.clqmtch.HeuristicSearch;
+import io.github.ahgamut.clqmtch.StackDFS;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -225,7 +225,7 @@ public class Align_Runner implements PlugIn {
     // System.out.printf("heuristic gave: %d, lb is: %d\n", lb, lower_bound);
     lb = Math.max(lb, lower_bound);
 
-    org.ahgamut.clqmtch.StackDFS s = new StackDFS();
+    StackDFS s = new StackDFS();
     ArrayList<Integer> s2 = amat.get_pruned_indices(lb);
     AdjMat s2m = amat.get_submat(s2);
     Graph subg = new Graph();

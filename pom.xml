@@ -82,14 +82,6 @@
 
     <repositories>
         <repository>
-            <id>clqmtch-mvn-repo</id>
-            <url>https://github.com/ahgamut/clqmtch/raw/mvn-repo/</url>
-            <snapshots>
-                <enabled>true</enabled>
-                <updatePolicy>daily</updatePolicy>
-            </snapshots>
-        </repository>
-        <repository>
             <id>scijava.public</id>
             <url>https://maven.scijava.org/content/groups/public</url>
         </repository>
@@ -158,14 +150,14 @@
                         <configuration>
                             <artifactSet>
                                 <includes>
-                                    <include>org.ahgamut*</include>
+                                    <include>io.github.ahgamut*</include>
                                 </includes>
                             </artifactSet>
                             <filters>
                                 <filter>
-                                    <artifact>org.ahgamut*</artifact>
+                                    <artifact>io.github.ahgamut*</artifact>
                                     <includes>
-                                        <include>org/ahgamut/clqmtch/**</include>
+                                        <include>io/github/ahgamut/clqmtch/**</include>
                                     </includes>
                                     <excludes>
                                         <exclude>module-info.class</exclude>
@@ -182,12 +174,6 @@
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
                             </transformers>
-                            <relocations>
-                                <relocation>
-                                    <pattern>org.ahgamut.clqmtch</pattern>
-                                    <shadedPattern>ahgamut.clqmtch</shadedPattern>
-                                </relocation>
-                            </relocations>
                         </configuration>
                     </execution>
                 </executions>
@@ -222,9 +208,9 @@
             <version>20230227</version>
         </dependency>
         <dependency>
-            <groupId>org.ahgamut</groupId>
+            <groupId>io.github.ahgamut</groupId>
             <artifactId>clqmtch</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>0.5.0</version>
         </dependency>
         <dependency>
             <groupId>mpicbg</groupId>
