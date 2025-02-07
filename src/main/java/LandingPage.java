@@ -3,8 +3,6 @@ import ij.plugin.PlugIn;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import javax.swing.*;
@@ -70,7 +68,15 @@ class OptionPanel extends JPanel {
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent actionEvent) {
-            Align_Runner.callFromMacro();
+            Thread work =
+                new Thread(
+                    new Runnable() {
+                      @Override
+                      public void run() {
+                        Align_Runner.callFromMacro();
+                      }
+                    });
+            work.start();
           }
         });
     aboutButton.addActionListener(
