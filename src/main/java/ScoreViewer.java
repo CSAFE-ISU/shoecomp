@@ -26,8 +26,8 @@ public class ScoreViewer {
   static final float[] dash1 = {10.0f};
   static final BasicStroke dashed =
       new BasicStroke(2.5f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER, 10.0f, dash1, 0.0f);
-  static Color MATCH_COLOR = new Color(207, 10, 44, 150);
-  static Color NONMATCH_COLOR = new Color(0, 58, 112, 150);
+  static Color MATCH_COLOR = new Color(0xf8, 0x5d, 0x19, 0xff);
+  static Color NONMATCH_COLOR = new Color(0x13, 0x83, 0xbd, 0xff);
   double[] match_scores;
   double[] nonmatch_scores;
   String name;
