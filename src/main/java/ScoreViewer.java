@@ -1,5 +1,8 @@
 import ij.ImagePlus;
 import java.awt.*;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Rectangle2D;
+import java.awt.image.ColorModel;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.nio.file.Path;
@@ -70,7 +73,7 @@ public class ScoreViewer {
     ds.addSeries("nonmatch", nonmatch_scores, 25, 0.0, 1.0);
     JFreeChart chart =
         ChartFactory.createHistogram(
-            "Score: " + name,
+            "SCORE NOT BASED ON REFERENCE DATABASE",
             "similarity score",
             "relative frequency",
             ds,
@@ -90,9 +93,10 @@ public class ScoreViewer {
     xmark.setPaint(Color.BLACK);
     xmark.setStroke(dashed);
     plot.setForegroundAlpha(0.75F);
+    plot.setBackgroundAlpha(0.0F);
     plot.addDomainMarker(xmark);
     plot.addAnnotation(anno);
-    ImagePlus z = new ImagePlus("Score: " + name, chart.createBufferedImage(640, 480));
+    ImagePlus z = new ImagePlus("Score Histogram", chart.createBufferedImage(960, 720));
     return z;
   }
 }
