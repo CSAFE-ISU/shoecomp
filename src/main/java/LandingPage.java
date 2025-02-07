@@ -54,7 +54,15 @@ class OptionPanel extends JPanel {
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent actionEvent) {
-            Image_Loader.callFromMacro();
+            Thread work =
+                new Thread(
+                    new Runnable() {
+                      @Override
+                      public void run() {
+                        Image_Loader.callFromMacro();
+                      }
+                    });
+            work.start();
           }
         });
     saveMarkup.addActionListener(

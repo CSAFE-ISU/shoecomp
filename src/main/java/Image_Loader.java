@@ -9,222 +9,381 @@ import java.awt.event.*;
 import java.io.File;
 import java.util.prefs.Preferences;
 import javax.swing.*;
+import javax.swing.border.LineBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+class ModPanel extends Panel {
+
+  public GridBagLayout lyt;
+  public GridBagConstraints gbc;
+
+  public Label marked;
+  public Button flipHButton;
+  public Button flipVButton;
+  public Button clearPoints;
+  public Button markPolygon;
+
+
+  public ModPanel() {
+    super();
+    this.lyt = new GridBagLayout();
+    this.gbc = new GridBagConstraints();
+    this.setLayout(this.lyt);
+    clearPoints = new Button("Clear Points");
+    marked = new Label("0 Points Marked");
+    flipHButton = new Button("Flip Horizontal");
+    flipVButton = new Button("Flip Vertical");
+    markPolygon = new Button("Click after marking shoeprint boundary");
+    this.setUI1();
+  }
+
+  public void setUI1() {
+    gbc.fill = GridBagConstraints.BOTH;
+    markPolygon.setFont(new Font("anno", Font.BOLD, 18));
+    gbc.gridx = 0;
+    gbc.gridy = 1;
+    gbc.gridwidth = 2;
+    gbc.gridheight = 2;
+    gbc.ipady = 20;
+    lyt.setConstraints(markPolygon, gbc);
+    this.add(markPolygon);
+
+    flipVButton.setEnabled(false);
+    flipHButton.setEnabled(false);
+    clearPoints.setEnabled(false);
+    markPolygon.setEnabled(true);
+  }
+
+  public void setUI2() {
+    this.remove(markPolygon);
+    markPolygon.setVisible(false);
+    gbc.gridwidth = 1;
+    gbc.gridheight = 1;
+    gbc.ipadx = 2;
+    gbc.ipady = 2;
+
+    Font fnt = new Font("loader", Font.PLAIN, 18);
+    marked.setFont(fnt);
+    gbc.gridx = 0;
+    gbc.gridy = 0;
+    lyt.setConstraints(marked, gbc);
+    this.add(marked);
+
+    clearPoints.setFont(fnt);
+    gbc.gridx = 1;
+    gbc.gridy = 0;
+    lyt.setConstraints(clearPoints, gbc);
+    this.add(clearPoints);
+
+    flipHButton.setFont(fnt);
+    gbc.gridx = 0;
+    gbc.gridy = 1;
+    lyt.setConstraints(flipHButton, gbc);
+    this.add(flipHButton);
+
+    flipVButton.setFont(fnt);
+    gbc.gridx = 1;
+    gbc.gridy = 1;
+    lyt.setConstraints(flipVButton, gbc);
+    this.add(flipVButton);
+
+    flipVButton.setEnabled(true);
+    flipHButton.setEnabled(true);
+    clearPoints.setEnabled(true);
+  }
+}
+
 public class Image_Loader implements PlugIn {
-    boolean markup_begin;
-    private final Image_LoaderGUI gui;
-    private JFileChooser chooser;
-    private boolean img_valid;
-    private boolean markup_valid;
+  private final Image_LoaderGUI gui;
+  boolean markup_begin;
+  private JFileChooser chooser;
+  private boolean img_valid;
+  private boolean markup_valid;
 
-    public Image_Loader() {
-        this.gui = new Image_LoaderGUI();
-        this.chooser = new JFileChooser();
-        this.loadReactions();
+  public Image_Loader() {
+    this.gui = new Image_LoaderGUI();
+    this.chooser = new JFileChooser();
+    this.loadReactions();
 
-        markup_begin = false;
-    }
+    markup_begin = false;
+  }
 
-    public static void callFromMacro() {
-        Image_Loader x = new Image_Loader();
-        x.run("");
-    }
+  public static void callFromMacro() {
+    Image_Loader x = new Image_Loader();
+    x.run("");
+  }
 
-    private void loadReactions() {
-        Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
-        gui.getMarkupLoadButton().addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+  private void loadReactions() {
+    Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
+    gui.getMarkupLoadButton()
+        .addActionListener(
+            new ActionListener() {
+              @Override
+              public void actionPerformed(ActionEvent e) {
                 String prev = prefs.get("PreviousJSONLoad", System.getProperty("user.home"));
                 chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("json", "txt");
                 if (validPath == null || validPath.isEmpty()) {
-                    JOptionPane.showMessageDialog(null, "Invalid File!");
-                    markup_valid = false;
+                  JOptionPane.showMessageDialog(null, "Invalid File!");
+                  markup_valid = false;
                 } else {
-                    gui.getMarkupPath().setText(validPath);
-                    markup_valid = true;
-                    String selected = new File(validPath).getParent();
-                    prefs.put("PreviousJSONLoad", selected);
+                  gui.getMarkupPath().setText(validPath);
+                  markup_valid = true;
+                  String selected = new File(validPath).getParent();
+                  prefs.put("PreviousJSONLoad", selected);
                 }
-            }
-        });
+              }
+            });
 
-        gui.getImgLoadButton().addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+    gui.getImgLoadButton()
+        .addActionListener(
+            new ActionListener() {
+              @Override
+              public void actionPerformed(ActionEvent e) {
                 String prev = prefs.get("PreviousImageLoad", System.getProperty("user.home"));
                 chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("tiff", "jpg", "png", "tif", "jpeg");
                 if (validPath == null || validPath.isEmpty()) {
-                    JOptionPane.showMessageDialog(null, "Invalid File!");
-                    img_valid = false;
+                  JOptionPane.showMessageDialog(null, "Invalid File!");
+                  img_valid = false;
                 } else {
-                    gui.getImgPath().setText(validPath);
-                    img_valid = true;
-                    String selected = new File(validPath).getParent();
-                    prefs.put("PreviousImageLoad", selected);
+                  gui.getImgPath().setText(validPath);
+                  img_valid = true;
+                  String selected = new File(validPath).getParent();
+                  prefs.put("PreviousImageLoad", selected);
                 }
-            }
-        });
+              }
+            });
+  }
 
+  String checkFileLoad(String... fileTypes) {
+    chooser.setFileFilter(new FileNameExtensionFilter("Load Image Data", fileTypes));
+    int returnValue = chooser.showOpenDialog(null);
+
+    if (returnValue == JFileChooser.APPROVE_OPTION) {
+      File file = chooser.getSelectedFile();
+      return file.getAbsolutePath();
     }
+    return "";
+  }
 
-    String checkFileLoad(String... fileTypes) {
-        chooser.setFileFilter(new FileNameExtensionFilter("Load Image Data", fileTypes));
-        int returnValue = chooser.showOpenDialog(null);
+  public void run(String arg) {
+    int p =
+        JOptionPane.showConfirmDialog(
+            null, gui.getPanel(), "Load Image and Markup", JOptionPane.OK_CANCEL_OPTION);
+    if (p == JOptionPane.CANCEL_OPTION) return;
+    if (!img_valid) return;
 
-        if (returnValue == JFileChooser.APPROVE_OPTION) {
-            File file = chooser.getSelectedFile();
-            return file.getAbsolutePath();
-        }
-        return "";
-    }
+    ImagePlus tmp = IJ.openImage(gui.getImgPath().getText());
+    ImageProcessor raw = tmp.getProcessor();
 
-    public void run(String arg) {
-        int p = JOptionPane.showConfirmDialog(null, gui.getPanel(),
-                "Load Image and Markup", JOptionPane.OK_CANCEL_OPTION);
-        if (p == JOptionPane.CANCEL_OPTION) return;
-        if (!img_valid) return;
+    ImageStack overlay = new ImageStack();
+    ImageProcessor marked = raw.duplicate();
+    ImageProcessor mask = raw.createProcessor(raw.getWidth(), raw.getHeight());
 
-        ImagePlus tmp = IJ.openImage(gui.getImgPath().getText());
-        ImageProcessor raw = tmp.getProcessor();
+    overlay.addSlice(marked);
+    overlay.addSlice(mask);
+    overlay.addSlice(raw);
+    gui.setImg(new ImagePlus(tmp.getShortTitle(), overlay));
 
-        ImageStack overlay = new ImageStack();
-        ImageProcessor marked = raw.duplicate();
-        ImageProcessor mask = raw.createProcessor(raw.getWidth(), raw.getHeight());
+    ImagePlus img = gui.getImg();
+    img.show();
+    ImageWindow win = img.getWindow();
+    ImageCanvas canv = win.getCanvas();
 
-        overlay.addSlice(marked);
-        overlay.addSlice(mask);
-        overlay.addSlice(raw);
-        gui.setImg(new ImagePlus(tmp.getShortTitle(), overlay));
-        gui.getImg().show();
+    boolean mark_bounds;
+    PolygonRoi pol = null;
+    PointRoi pts, old_pts = null;
 
-        boolean mark_bounds;
-        PolygonRoi pol = null;
-        PointRoi pts;
+    ModPanel modpanel = new ModPanel();
+    win.add(modpanel, 1);
+    canv.fitToWindow();
+    win.pack();
 
-        if (markup_valid) {
-            try {
-                MarkupData m = MarkupData.fromFile(gui.getMarkupPath().getText());
-                if (m.nbounds != 0) {
-                    pol = m.getBoundsAsRoi();
-                    mark_bounds = true;
-                } else {
-                    this.showBoundsHelper(gui.getImg());
-                    mark_bounds = false;
-                }
-                if (m.npoints != 0) {
-                    pts = m.getPointsAsRoi();
-                } else {
-                    pts = new PointRoi();
-                }
-            } catch (Exception e) {
-                // might need to show an error here
-                System.out.println("unable to read JSON!");
-                e.printStackTrace();
-                gui.getImg().close();
-                return;
-            }
+
+    if (markup_valid) {
+      try {
+        MarkupData m = MarkupData.fromFile(gui.getMarkupPath().getText());
+        if (m.nbounds != 0) {
+          pol = m.getBoundsAsRoi();
+          mark_bounds = true;
         } else {
-            // if we didn't load a JSON,
-            // we still need to mark bounds
-            mark_bounds = false;
-            pts = new PointRoi();
+          pol = this.showBoundsHelper(gui.getImg(), modpanel);
+          mark_bounds = true;
         }
-
-        if (!mark_bounds) {
-            pol = this.showBoundsHelper(gui.getImg());
+        if (m.npoints != 0) {
+          old_pts = m.getPointsAsRoi();
+          old_pts.promptBeforeDeleting(false);
         }
-        if (pol == null || pts == null) {
-            return;
-        }
+      } catch (Exception e) {
+        // might need to show an error here
+        System.out.println("unable to read JSON!");
+        e.printStackTrace();
+        gui.getImg().close();
+        return;
+      }
+    } else {
+      // if we didn't load a JSON,
+      // we still need to mark bounds
+      mark_bounds = false;
+    }
 
-        marked.setColor(Color.BLACK);
-        marked.fillOutside(pol);
+    if (!mark_bounds) {
+      pol = this.showBoundsHelper(gui.getImg(), modpanel);
+    }
+    if (pol == null) {
+      tmp.close();
+      img.close();
+      return;
+    }
 
-        mask.setColor(Color.WHITE);
-        mask.fill(pol);
+    pts = new PointRoi();
+    pts.setSize(3);
+    pts.setPointType(PointRoi.DOT);
+    pts.setFillColor(new Color(0xf8, 0x5d, 0x19, 0xff));
+    pts.setStrokeColor(new Color(0xf8, 0x5d, 0x19, 0xff));
+    pts.setImage(img);
+    img.setRoi(pts);
+    pts.promptBeforeDeleting(false);
 
-        tmp.close();
-        gui.getImg().updateAndDraw();
+    if (old_pts != null) {
+      for (Point z : old_pts.getContainedPoints()) {
+        pts.addUserPoint(gui.getImg(), z.x, z.y);
+      }
+    }
 
-        pts.setSize(3);
-        pts.setFillColor(Color.RED);
-        pts.setStrokeColor(Color.RED);
-        gui.getImg().setProperty("points", pts);
-        gui.getImg().setProperty("bounds", pol);
-        gui.getImg().setProperty("name", gui.getImg().getShortTitle());
-        gui.getImg().setTitle(gui.getImg().getProperty("name") + ": " +  pts.size() + " Points Marked");
-        /* TODO: make behavior consistent
-            when marking anew, the PointRoi does not show on all layers  */
-        ij.IJ.setTool("Multi-Point");
-        gui.getImg().setRoi(pts);
-        ImageCanvas canv = gui.getImg().getWindow().getCanvas();
-        canv.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                super.mousePressed(e);
-                if (gui.getImg().getRoi() == null) {
-                    reconfigurePointRoi();
-                }
-                int numPoints = (gui.getImg().getRoi() != null) ? gui.getImg().getRoi().getContainedPoints().length : 0;
-                gui.getImg().setTitle(gui.getImg().getProperty("name") + ": " +  numPoints + " Points Marked");
+    marked.setColor(Color.BLACK);
+    marked.fillOutside(pol);
+
+    mask.setColor(Color.WHITE);
+    mask.fill(pol);
+
+    tmp.close();
+    img.updateAndDraw();
+    img.setProperty("points", pts);
+    img.setProperty("bounds", pol);
+    img.setProperty("name", gui.getImg().getShortTitle());
+    /* TODO: make behavior consistent
+    when marking anew, the PointRoi does not show on all layers  */
+    ij.IJ.setTool("Multi-Point");
+    img.setRoi(pts);
+
+    modpanel.marked.setText(pts.getContainedPoints().length + " Points Marked");
+    setPanelReactions(modpanel);
+    modpanel.validate();
+    img.repaintWindow();
+
+    canv.addMouseListener(
+        new MouseAdapter() {
+          @Override
+          public void mousePressed(MouseEvent e) {
+            // super.mousePressed(e);
+            if (gui.getImg().getRoi() == null) {
+              reconfigurePointRoi();
             }
+            int numPoints =
+                (gui.getImg().getRoi() != null)
+                    ? gui.getImg().getRoi().getContainedPoints().length
+                    : 0;
+            modpanel.marked.setText(numPoints + " Points Marked");
+            // img.repaintWindow();
+          }
         });
-    }
+  }
 
-    void reconfigurePointRoi() {
-        PointRoi pts = new PointRoi();
-        pts.setSize(3);
-        pts.setFillColor(Color.RED);
-        pts.setStrokeColor(Color.RED);
-        gui.getImg().setProperty("points", pts);
-        ij.IJ.setTool("Multi-Point");
-        gui.getImg().setRoi(pts);
+  private void setPanelReactions(ModPanel p) {
+    p.setUI2();
+    p.flipHButton.addActionListener(
+        new ActionListener() {
+          @Override
+          public void actionPerformed(ActionEvent actionEvent) {
+            ImagePlus ipz = gui.getImg();
+            if (ipz == null) return;
+            if (ipz.hasImageStack()) {
+              ImageStack stk = ipz.getImageStack();
+              int N = stk.getSize();
+              for (int i = 1; i <= N; ++i) {
+                stk.getProcessor(i).flipHorizontal();
+              }
+            } else {
+              ipz.getProcessor().flipHorizontal();
+            }
+            ipz.repaintWindow();
+          }
+        });
 
-    }
+    p.flipVButton.addActionListener(
+        new ActionListener() {
+          @Override
+          public void actionPerformed(ActionEvent actionEvent) {
+            ImagePlus ipz = gui.getImg();
+            if (ipz == null) return;
+            if (ipz.hasImageStack()) {
+              ImageStack stk = ipz.getImageStack();
+              int N = stk.getSize();
+              for (int i = 1; i <= N; ++i) {
+                stk.getProcessor(i).flipVertical();
+              }
+            } else {
+              ipz.getProcessor().flipVertical();
+            }
+            ipz.repaintWindow();
+          }
+        });
 
-    PolygonRoi showBoundsHelper(ImagePlus t) {
-        final Object obj = new Object();
-        ij.IJ.setTool(Toolbar.POLYGON);
-        Runnable r = new Runnable() {
-            @Override
-            public void run() {
-                JDialog d = new JDialog();
-                JPanel subpanel = new JPanel(new GridLayout(1, 1));
-                JTextArea b = new JTextArea();
-                b.setText("Close this window after marking\nthe boundary of the shoeprint");
-                b.setFont(b.getFont().deriveFont(28f));
-                b.setEditable(false);
-                subpanel.add(b);
-                d.setContentPane(subpanel);
-                d.setTitle("Mark boundary of shoeprint");
-                d.pack();
-                d.addWindowListener(new WindowAdapter() {
-                    @Override
-                    public void windowClosed(WindowEvent e) {
-                        synchronized (obj) { // can lock when worker thread releases with wait
-                            obj.notify(); // signals wait
-                        }
-                        super.windowClosed(e);
+    p.clearPoints.addActionListener(
+        new ActionListener() {
+          @Override
+          public void actionPerformed(ActionEvent actionEvent) {
+            reconfigurePointRoi();
+            p.marked.setText(0 + " Points Marked");
+          }
+        });
+  }
+
+  void reconfigurePointRoi() {
+    PointRoi pts = new PointRoi();
+    pts.setSize(3);
+    pts.setPointType(PointRoi.DOT);
+    pts.setFillColor(new Color(0xf8, 0x5d, 0x19, 0xff));
+    pts.setStrokeColor(new Color(0xf8, 0x5d, 0x19, 0xff));
+    pts.promptBeforeDeleting(false);
+    gui.getImg().setProperty("points", pts);
+    ij.IJ.setTool("Multi-Point");
+    gui.getImg().setRoi(pts, true);
+  }
+
+  PolygonRoi showBoundsHelper(ImagePlus imp, ModPanel modpanel) {
+    ImageWindow win = imp.getWindow();
+    final Object obj = new Object();
+    ij.IJ.setTool(Toolbar.POLYGON);
+
+
+    Runnable r =
+        new Runnable() {
+          @Override
+          public void run() {
+            modpanel.markPolygon.addActionListener(
+                new ActionListener() {
+                  @Override
+                  public void actionPerformed(ActionEvent actionEvent) {
+                    synchronized (obj) {
+                      obj.notify();
                     }
+                  }
                 });
-                d.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-                d.setVisible(true);
-            }
+          }
         };
-        try {
-            synchronized (obj) {
-                SwingUtilities.invokeLater(r);
-                obj.wait();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        PolygonRoi pol = (PolygonRoi) t.getRoi();
-        return pol;
+    try {
+      synchronized (obj) {
+        SwingUtilities.invokeLater(r);
+        obj.wait();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
     }
+
+    PolygonRoi pol = (PolygonRoi) imp.getRoi();
+    return pol;
+  }
 }
