@@ -201,13 +201,14 @@ public class Align_Runner implements PlugIn {
   void make_adjmat() {
     Mapper3 x = new Mapper3();
     System.out.println("creating the graph");
-    this.amat = x.construct_graph(
+    this.amat =
+        x.construct_graph(
             q_pts, q_pts.length, k_pts, k_pts.length, delta, epsilon, min_ratio, max_ratio);
   }
 
   int get_heuristic_lb() {
     ArrayList<Integer> s1 = amat.get_pruned_indices(lower_bound);
-    if(s1.isEmpty()) {
+    if (s1.isEmpty()) {
       return 0;
     }
     AdjMat submat = amat.get_submat(s1);
@@ -236,7 +237,7 @@ public class Align_Runner implements PlugIn {
     ArrayList<Integer> subclq = subg.get_max_clique();
     this.clq = new ArrayList<>();
     for (int x : subclq) {
-        clq.add(s2.get(x));
+      clq.add(s2.get(x));
     }
   }
 
@@ -265,30 +266,17 @@ public class Align_Runner implements PlugIn {
     Point[] qp1 = q_pts;
     ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
     Stroke qs = new BasicStroke(18F);
-    Color qcol = new Color(255, 0, 0, 157);
+    Color qcol = new Color(0xf8, 0x5d, 0x19, 0xff);
 
     ij.ImageStack k_stack = k_img.getImageStack();
     Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
     PolygonRoi mapped_k_bounds = aip.mapPolygonRoi(k_bounds, false);
     ArrayList<Integer> kc_ind = aip.getCorrK_ind();
     Stroke ks = new BasicStroke(18F);
-    Color kcol = new Color(0, 0, 255, 157);
+    Color kcol = new Color(0x13, 0x83, 0xbd, 0xff);
 
-    /* render necessary things on overlay */
-    BufferedImage bi;
-    Graphics2D g;
-
-    bi = getWritableImage(q_stack.getProcessor(1));
-    g = (Graphics2D) bi.getGraphics();
-    burnPoints(g, qp1, qc_ind, qs, qcol);
-    burnPoints(g, kp1, kc_ind, ks, kcol);
-    ImageProcessor q1 = rasterize(bi).getProcessor();
-
-    bi = getWritableImage(q_stack.getProcessor(2));
-    g = (Graphics2D) bi.getGraphics();
-    burnPoints(g, qp1, qc_ind, qs, qcol);
-    burnPoints(g, kp1, kc_ind, ks, kcol);
-    ImageProcessor q2 = rasterize(bi).getProcessor();
+    ImageProcessor q1 = q_stack.getProcessor(1).duplicate();
+    ImageProcessor q2 = q_stack.getProcessor(2).duplicate();
 
     /* transform images via fit */
     ImageProcessor k1 = k_stack.getProcessor(1).createProcessor(q1.getWidth(), q1.getHeight());
@@ -300,18 +288,31 @@ public class Align_Runner implements PlugIn {
     k10.setColor(Color.WHITE);
     k10.fillOutside(common_bounds);
     k10.setColorModel(CustomColorModelFactory.getDefaultModel());
-    bi = getWritableImage(q_stack.getProcessor(1));
-    g = (Graphics2D) bi.getGraphics();
-    g.drawImage(k10.createImage(), 0, 0, null);
-    burnPoints(g, qp1, qc_ind, qs, qcol);
-    burnPoints(g, kp1, kc_ind, ks, kcol);
-    ImageProcessor ovr = rasterize(bi).getProcessor();
+    Overlay ovr_k = new Overlay();
+    ovr_k.add(new ImageRoi(0, 0, k10));
 
-    bi = getWritableImage(k1);
+    /* render necessary things on overlay */
+    BufferedImage bi;
+    Graphics2D g;
+    Overlay pts_overlay = new Overlay();
+    ImageProcessor tmp = q1.createProcessor(q1.getWidth(), q1.getHeight());
+    bi = new BufferedImage(tmp.getWidth(), tmp.getHeight(), BufferedImage.TYPE_INT_ARGB);
     g = (Graphics2D) bi.getGraphics();
+    g.setPaint(new Color(0, 0, 0, 0));
+    g.fillRect(0, 0, q1.getWidth(), q1.getHeight());
+    g.setBackground(new Color(0, 0, 0, 0));
+    g.setColor(new Color(0, 0, 0, 0));
     burnPoints(g, qp1, qc_ind, qs, qcol);
     burnPoints(g, kp1, kc_ind, ks, kcol);
-    k1 = rasterize(bi).getProcessor();
+    pts_overlay.add(new ImageRoi(0, 0, bi));
+
+    q1.drawOverlay(pts_overlay);
+    q2.drawOverlay(pts_overlay);
+    k1.drawOverlay(pts_overlay);
+
+    ImageProcessor ovr = q1.duplicate();
+    ovr.drawOverlay(pts_overlay);
+    ovr.drawOverlay(ovr_k);
 
     ij.ImageStack res = new ImageStack();
     res.addSlice(ovr);
@@ -339,14 +340,14 @@ public class Align_Runner implements PlugIn {
     Point[] qp0 = q_pts;
     ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
     Stroke qs = new BasicStroke(18F);
-    Color qcol = new Color(255, 0, 0, 157);
+    Color qcol = new Color(0xf8, 0x5d, 0x19, 0xff);
 
     ij.ImageStack k_stack = k_img.getImageStack();
     Point[] kp0 = k_pts;
     Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
     ArrayList<Integer> kc_ind = aip.getCorrK_ind();
     Stroke ks = new BasicStroke(18F);
-    Color kcol = new Color(0, 0, 255, 157);
+    Color kcol = new Color(0x13, 0x83, 0xbd, 0xff);
 
     System.out.println("Saving to " + targ_zip);
     DataOutputStream out;
