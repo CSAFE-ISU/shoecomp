@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -400,7 +401,7 @@ public class Align_Runner implements PlugIn {
     return new ImagePlus("", new ColorProcessor(bi));
   }
 
-  boolean saveOverlay(String targ_zip, JLabel currentWork) {
+  boolean saveOverlay(String targ_zip, JLabel currentWork, String imgtype) {
     ij.ImageStack q_stack = q_img.getImageStack();
     Point[] qp0 = q_pts;
     ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
@@ -487,10 +488,15 @@ public class Align_Runner implements PlugIn {
         currentWork.setText("Saving in ZIP: " + tmp);
         img = new ImagePlus("", res_stack.getProcessor(j));
         info = img.getFileInfo();
-        zos.putNextEntry(new ZipEntry(tmp + ".tiff"));
-        te = new TiffEncoder(info);
+        if(imgtype.equals("png")) {
+          zos.putNextEntry(new ZipEntry(tmp + ".png"));
+          ImageIO.write(img.getBufferedImage(), "png", out);
+        } else {
+          zos.putNextEntry(new ZipEntry(tmp + ".tiff"));
+          te = new TiffEncoder(info);
+          te.write(out);
+        }
         System.out.println(res_stack.getSliceLabel(j));
-        te.write(out);
       }
 
       m =
@@ -561,11 +567,17 @@ class AlignProgression {
   int prevstat;
   JFrame frame;
   JPanel subpanel;
+
+  GridBagLayout layout;
   GridBagConstraints gbc;
   JProgressBar bar;
   JLabel currentWork;
   JButton saveOK;
   JButton cancelRun;
+
+  ButtonGroup imgtype;
+  JRadioButton asPNG;
+  JRadioButton asTIFF;
 
   AlignProgression() {
     targ_zip = "";
@@ -580,7 +592,8 @@ class AlignProgression {
     frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
     frame.setSize(320, 240);
 
-    subpanel = new JPanel(new GridBagLayout());
+    layout = new GridBagLayout();
+    subpanel = new JPanel(layout);
     gbc = new GridBagConstraints();
     gbc.fill = GridBagConstraints.HORIZONTAL;
 
@@ -588,38 +601,61 @@ class AlignProgression {
     currentWork = new JLabel();
     saveOK = new JButton("Save Info");
     cancelRun = new JButton("Cancel");
+    imgtype = new ButtonGroup();
+    asPNG = new JRadioButton("PNG");
+    asTIFF = new JRadioButton("TIFF");
+    imgtype.add(asPNG);
+    imgtype.add(asTIFF);
+    asTIFF.setSelected(true);
+    asPNG.setSelected(false);
 
     gbc.gridx = 0;
     gbc.ipady = 40;
     gbc.gridy = 0;
-    gbc.gridwidth = 2;
+    gbc.gridwidth = 4;
+    layout.setConstraints(currentWork, gbc);
     subpanel.add(currentWork, gbc);
 
     gbc.gridx = 0;
     gbc.gridy = 1;
     gbc.ipady = 20;
-    gbc.gridwidth = 2;
+    gbc.gridwidth = 4;
+    layout.setConstraints(bar, gbc);
     subpanel.add(bar, gbc);
 
     gbc.gridx = 0;
-    gbc.weightx = 0.5;
     gbc.gridy = 2;
     gbc.ipady = 30;
-    gbc.gridwidth = 1;
+    gbc.gridwidth = 2;
+    layout.setConstraints(saveOK, gbc);
     subpanel.add(saveOK, gbc);
 
-    gbc.gridx = 1;
-    gbc.weightx = 0.5;
+    gbc.gridx = 2;
     gbc.gridy = 2;
     gbc.ipady = 30;
-    gbc.gridwidth = 1;
+    gbc.gridwidth = 2;
+    layout.setConstraints(cancelRun, gbc);
     subpanel.add(cancelRun, gbc);
+
+    gbc.gridx = 0;
+    gbc.gridy = 3;
+    gbc.ipady = 0;
+    gbc.gridwidth = 1;
+    subpanel.add(asPNG, gbc);
+    gbc.gridx = 1;
+    gbc.gridy = 3;
+    gbc.ipady = 0;
+    gbc.gridwidth = 1;
+    subpanel.add(asTIFF, gbc);
+
     frame.setContentPane(subpanel);
     frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
   }
 
   void loadReactions() {
     saveOK.setEnabled(false);
+    asTIFF.setEnabled(false);
+    asPNG.setEnabled(false);
     saveOK.addActionListener(
         new ActionListener() {
           @Override
@@ -727,15 +763,20 @@ class AlignProgression {
         x.histPlot.show();
         saveOK.setEnabled(true);
         cancelRun.setEnabled(true);
+        asTIFF.setEnabled(true);
+        asPNG.setEnabled(true);
         setStatus(StatusProgress.ZIPSELECT);
         cancelRun.setText("Don't Save");
         break;
       case SAVING:
         saveOK.setEnabled(false);
         cancelRun.setEnabled(false);
+        asTIFF.setEnabled(false);
+        asPNG.setEnabled(false);
         frame.setTitle("Saving...");
         currentWork.setText("Saving...");
-        if (!x.saveOverlay(targ_zip, currentWork)) {
+        String s = asPNG.isSelected() ? "png" : "tiff";
+        if (!x.saveOverlay(targ_zip, currentWork, s)) {
           throw new IOException("unable to save zip");
         }
         setStatus(StatusProgress.COMPLETED);
