@@ -23,6 +23,8 @@ import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import mpicbg.ij.TransformMapping;
 import mpicbg.models.*;
@@ -95,6 +97,67 @@ enum StatusProgress {
 
   public String report() {
     return "Canceled.";
+  }
+}
+
+class ThresholdPanel extends Panel {
+  JSlider slider;
+  JLabel label;
+  ImagePlus imp;
+  ImageProcessor k;
+  ImageProcessor ovr;
+  ImageProcessor backup;
+  GridBagLayout layout;
+  GridBagConstraints gbc;
+  ThresholdPanel(ImagePlus imp, ImageProcessor k, ImageProcessor ovr) {
+    super();
+    this.layout = new GridBagLayout();
+    this.gbc = new GridBagConstraints();
+    this.setLayout(layout);
+    this.imp = imp;
+    this.k = k;
+    this.ovr = ovr;
+    this.backup = ovr.duplicate();
+    ovr.snapshot();
+    setUI();
+    setReactions();
+  }
+
+  void setUI() {
+    this.slider = new JSlider(JSlider.HORIZONTAL, 1, 255, 110);
+    this.slider.setToolTipText("set transparency of overlay");
+    this.label = new JLabel("Transparency");
+    gbc.fill = GridBagConstraints.BOTH;
+    gbc.gridx = 0;
+    gbc.gridwidth = 1;
+    layout.setConstraints(label, gbc);
+    this.add(label);
+    gbc.gridx = 1;
+    gbc.gridwidth = 2;
+    layout.setConstraints(slider, gbc);
+    this.add(slider);
+  }
+
+  void doOverlay(int b) {
+    ImageProcessor k_pres = k.duplicate();
+    k_pres.setColorModel(CustomColorModelFactory.getModelThreshed(b));
+    ImageRoi roi = new ImageRoi(0,0,k_pres);
+    ovr.reset();
+    // ovr.snapshot();
+    ovr.drawRoi(roi);
+    imp.repaintWindow();
+  }
+
+  void setReactions() {
+      this.slider.addChangeListener(new ChangeListener() {
+        @Override
+        public void stateChanged(ChangeEvent changeEvent) {
+            if(slider.getValueIsAdjusting()) {
+              int b = slider.getValue();
+              doOverlay(b);
+            }
+        }
+      });
   }
 }
 
@@ -287,9 +350,6 @@ public class Align_Runner implements PlugIn {
     common_bounds = common_bounds.and(new ShapeRoi(q_bounds));
     k10.setColor(Color.WHITE);
     k10.fillOutside(common_bounds);
-    k10.setColorModel(CustomColorModelFactory.getDefaultModel());
-    Overlay ovr_k = new Overlay();
-    ovr_k.add(new ImageRoi(0, 0, k10));
 
     /* render necessary things on overlay */
     BufferedImage bi;
@@ -312,14 +372,19 @@ public class Align_Runner implements PlugIn {
 
     ImageProcessor ovr = q1.duplicate();
     ovr.drawOverlay(pts_overlay);
-    ovr.drawOverlay(ovr_k);
 
     ij.ImageStack res = new ImageStack();
     res.addSlice(ovr);
     res.addSlice(q1);
     res.addSlice(k1);
     res.addSlice(q2);
-    this.rimg = new ImagePlus("Overlay", res); // //////
+    this.rimg = new ImagePlus("Overlay", res);
+    this.rimg.show();
+    ThresholdPanel tpanel = new ThresholdPanel(this.rimg, k10, ovr);
+    this.rimg.getWindow().add(tpanel, 1);
+    this.rimg.getCanvas().fitToWindow();
+    this.rimg.getWindow().pack();
+    tpanel.doOverlay(110);
   }
 
   BufferedImage getWritableImage(ImageProcessor imp) {
@@ -662,7 +727,6 @@ class AlignProgression {
         x.histPlot.show();
         saveOK.setEnabled(true);
         cancelRun.setEnabled(true);
-        x.rimg.show();
         setStatus(StatusProgress.ZIPSELECT);
         cancelRun.setText("Don't Save");
         break;
@@ -939,6 +1003,14 @@ class CustomColorModelFactory {
     int b = 0x96;
     int a = 151;
     int bar = 110; // all pixel values above this are transparent
+    return getModel(r, g, b, a, bar);
+  }
+
+  public static IndexColorModel getModelThreshed(int bar) {
+    int r = 0x9f;
+    int g = 0x14;
+    int b = 0x96;
+    int a = 151;
     return getModel(r, g, b, a, bar);
   }
 }
