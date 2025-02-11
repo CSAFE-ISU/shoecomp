@@ -20,6 +20,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javax.imageio.ImageIO;
@@ -182,6 +183,7 @@ public class Align_Runner implements PlugIn {
   /* these are post-processing */
   AdjMat amat;
   ArrayList<Integer> clq;
+  ArrayList<Integer> altclq;
   AlignImagePairFromPoints<SimilarityModel2D> aip;
   ImagePlus rimg;
   ImagePlus histPlot;
@@ -254,10 +256,10 @@ public class Align_Runner implements PlugIn {
   }
 
   public void run(String arg) {
-    AlignProgression prog = new AlignProgression();
+    AlignProgression prog = new AlignProgression(this);
     q_img.lock();
     k_img.lock();
-    prog.run(this);
+    prog.run();
     q_img.unlock();
     k_img.unlock();
   }
@@ -270,12 +272,12 @@ public class Align_Runner implements PlugIn {
             q_pts, q_pts.length, k_pts, k_pts.length, delta, epsilon, min_ratio, max_ratio);
   }
 
-  int get_heuristic_lb() {
-    ArrayList<Integer> s1 = amat.get_pruned_indices(lower_bound);
+  int get_heuristic_lb(AdjMat a) {
+    ArrayList<Integer> s1 = a.get_pruned_indices(lower_bound);
     if (s1.isEmpty()) {
       return 0;
     }
-    AdjMat submat = amat.get_submat(s1);
+    AdjMat submat = a.get_submat(s1);
     Graph g = new Graph();
     g.load_matrix(submat.matsize, submat.mat);
     HeuristicSearch h = new HeuristicSearch();
@@ -284,25 +286,35 @@ public class Align_Runner implements PlugIn {
     return clq.size();
   }
 
-  void find_clique() {
+  ArrayList<Integer> find_clique(AdjMat a) {
     System.out.println("max clique");
-    int lb = get_heuristic_lb();
+    int lb = get_heuristic_lb(a);
     // System.out.printf("heuristic gave: %d, lb is: %d\n", lb, lower_bound);
     lb = Math.max(lb, lower_bound);
 
     StackDFS s = new StackDFS();
     ArrayList<Integer> s2 = amat.get_pruned_indices(lb);
-    AdjMat s2m = amat.get_submat(s2);
+    AdjMat s2m = a.get_submat(s2);
     Graph subg = new Graph();
     subg.load_matrix(s2m.matsize, s2m.mat);
     // System.out.printf("%d, %s\n", amat.matsize, subg.toString());
     s.process_graph(subg, lb, upper_bound); /* warning is glitch */
 
     ArrayList<Integer> subclq = subg.get_max_clique();
-    this.clq = new ArrayList<>();
+    ArrayList<Integer> res = new ArrayList<>();
     for (int x : subclq) {
-      clq.add(s2.get(x));
+      res.add(s2.get(x));
     }
+    return res;
+  }
+
+  void clique_search() {
+    this.clq = this.find_clique(this.amat);
+    /* clq = new ArrayList<>(clq.stream().limit(5).collect(Collectors.toList())); */
+    AdjMat clean = this.amat.get_wipemat(this.clq);
+    this.altclq = this.find_clique(clean);
+    System.out.println(this.clq);
+    System.out.println(this.altclq);
   }
 
   void transformImages() throws NotEnoughDataPointsException, IllDefinedDataPointsException {
@@ -575,11 +587,16 @@ class AlignProgression {
   JButton saveOK;
   JButton cancelRun;
 
+  JButton nextMax;
+
   ButtonGroup imgtype;
   JRadioButton asPNG;
   JRadioButton asTIFF;
 
-  AlignProgression() {
+  Align_Runner x;
+
+  AlignProgression(Align_Runner runner) {
+    this.x = runner;
     targ_zip = "";
     status = StatusProgress.STARTING;
     loadUI();
@@ -601,6 +618,7 @@ class AlignProgression {
     currentWork = new JLabel();
     saveOK = new JButton("Save Info");
     cancelRun = new JButton("Cancel");
+    nextMax = new JButton("Next Alignment");
     imgtype = new ButtonGroup();
     asPNG = new JRadioButton("PNG");
     asTIFF = new JRadioButton("TIFF");
@@ -641,18 +659,27 @@ class AlignProgression {
     gbc.gridy = 3;
     gbc.ipady = 0;
     gbc.gridwidth = 1;
+    layout.setConstraints(asPNG, gbc);
     subpanel.add(asPNG, gbc);
     gbc.gridx = 1;
     gbc.gridy = 3;
     gbc.ipady = 0;
     gbc.gridwidth = 1;
+    layout.setConstraints(asTIFF, gbc);
     subpanel.add(asTIFF, gbc);
+    gbc.gridx = 2;
+    gbc.gridy = 3;
+    gbc.ipady = 0;
+    gbc.gridwidth = 2;
+    layout.setConstraints(nextMax, gbc);
+    subpanel.add(nextMax, gbc);
 
     frame.setContentPane(subpanel);
     frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
   }
 
   void loadReactions() {
+    nextMax.setEnabled(false);
     saveOK.setEnabled(false);
     asTIFF.setEnabled(false);
     asPNG.setEnabled(false);
@@ -669,6 +696,12 @@ class AlignProgression {
             }
           }
         });
+    nextMax.addActionListener(new ActionListener() {
+      @Override
+      public void actionPerformed(ActionEvent actionEvent) {
+        tryNextAlignment();
+      }
+    });
     cancelRun.setEnabled(true);
   }
 
@@ -684,7 +717,7 @@ class AlignProgression {
     return prevstat == status.getProgressValue();
   }
 
-  public void run(Align_Runner x) {
+  public void run() {
     Thread work =
         new Thread(
             new Runnable() {
@@ -692,7 +725,7 @@ class AlignProgression {
               public void run() {
                 try {
                   while (stillRunning()) {
-                    doWork(x); /* TODO: how to interrupt while doing work? */
+                    doWork(); /* TODO: how to interrupt while doing work? */
                     if (Thread.currentThread().isInterrupted())
                       throw new InterruptedException("user cancellation");
                   }
@@ -738,7 +771,7 @@ class AlignProgression {
     }
   }
 
-  public void doWork(Align_Runner x)
+  public void doWork()
       throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
     switch (status) {
       case STARTING:
@@ -749,7 +782,7 @@ class AlignProgression {
         setStatus(StatusProgress.ALIGNING);
         break;
       case ALIGNING:
-        x.find_clique();
+        x.clique_search();
         setStatus(StatusProgress.SIMILARITY);
         break;
       case SIMILARITY:
@@ -765,6 +798,7 @@ class AlignProgression {
         cancelRun.setEnabled(true);
         asTIFF.setEnabled(true);
         asPNG.setEnabled(true);
+        nextMax.setEnabled(!x.altclq.isEmpty());
         setStatus(StatusProgress.ZIPSELECT);
         cancelRun.setText("Don't Save");
         break;
@@ -783,6 +817,25 @@ class AlignProgression {
         break;
     }
     if (!atSameStep()) changeUI();
+  }
+
+  void tryNextAlignment() {
+    nextMax.setEnabled(false);
+    saveOK.setEnabled(false);
+    asTIFF.setEnabled(false);
+    asPNG.setEnabled(false);
+    cancelRun.setText("Cancel");
+    x.amat = x.amat.get_wipemat(x.clq);
+    status = StatusProgress.ALIGNING;
+    if (x.rimg != null) {
+      x.rimg.close();
+      x.rimg = null;
+    }
+    if (x.histPlot != null) {
+      x.histPlot.close();
+      x.histPlot = null;
+    }
+    changeUI();
   }
 
   void stepSetZipTarget(JFileChooser chooser) {

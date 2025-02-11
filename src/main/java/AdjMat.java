@@ -34,6 +34,19 @@ public class AdjMat {
     mat[i1 * klen + i2][j1 * klen + j2] = 1;
   }
 
+  AdjMat get_wipemat(ArrayList<Integer> verts) {
+    int N = verts.size();
+    AdjMat res = new AdjMat(this.matsize);
+    for (int i = 0; i < matsize; i++) {
+      if(verts.contains(i)) continue;
+      for (int j = 0; j < matsize; j++) {
+        if(verts.contains(j)) continue;
+        res.mat[i][j] = mat[i][j];
+      }
+    }
+    return res;
+  }
+
   AdjMat get_submat(ArrayList<Integer> verts) {
     int N = verts.size();
     AdjMat res = new AdjMat(N);
