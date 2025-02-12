@@ -43,10 +43,10 @@ public class Align_RunnerGUI {
     this.Kimg_points = new JLabel();
     this.minRatioT = new JFormattedTextField(NumberFormat.getInstance());
     this.maxRatioT = new JFormattedTextField(NumberFormat.getInstance());
-    this.deltaT = new JSlider(1, 50);
-    this.deltaT.setValue(10);
-    this.epsilonT = new JSlider(1, 50);
-    this.epsilonT.setValue(10);
+    this.deltaT = new JSlider(1, 25);
+    this.deltaT.setValue(6);
+    this.epsilonT = new JSlider(1, 25);
+    this.epsilonT.setValue(6);
     this.deltaTVal = new JLabel((deltaT.getValue() / 10.0) + " degrees");
     this.epsilonTVal = new JLabel((epsilonT.getValue() / 10.0) + " units");
     this.lowerBoundT = new JFormattedTextField(NumberFormat.getInstance());
@@ -122,7 +122,7 @@ public class Align_RunnerGUI {
 
     Dictionary dict = new Hashtable();
     dict.put(1, new JLabel("0.1"));
-    dict.put(50, new JLabel("5.0"));
+    dict.put(25, new JLabel("2.5"));
     this.deltaT.setLabelTable(dict);
     this.epsilonT.setLabelTable(dict);
     this.deltaT.setPaintLabels(true);
