@@ -111,13 +111,16 @@ class ThresholdPanel extends Panel {
   ImageProcessor backup;
   GridBagLayout layout;
   GridBagConstraints gbc;
-  ThresholdPanel(ImagePlus imp, ImageProcessor k, ImageProcessor ovr) {
+  int clq_size;
+  JLabel clq;
+  ThresholdPanel(int clq_size, ImagePlus imp, ImageProcessor k, ImageProcessor ovr) {
     super();
     this.layout = new GridBagLayout();
     this.gbc = new GridBagConstraints();
     this.setLayout(layout);
     this.imp = imp;
     this.k = k;
+    this.clq_size = clq_size;
     this.ovr = ovr;
     this.backup = ovr.duplicate();
     ovr.snapshot();
@@ -129,8 +132,13 @@ class ThresholdPanel extends Panel {
     this.slider = new JSlider(JSlider.HORIZONTAL, 1, 255, 110);
     this.slider.setToolTipText("set transparency of overlay");
     this.label = new JLabel("Transparency");
+    this.clq = new JLabel(clq_size + " Points Aligned");
     gbc.fill = GridBagConstraints.BOTH;
     gbc.gridx = 0;
+    gbc.gridwidth = 3;
+    layout.setConstraints(clq, gbc);
+    this.add(clq);
+    gbc.gridx = 1;
     gbc.gridwidth = 1;
     layout.setConstraints(label, gbc);
     this.add(label);
@@ -272,8 +280,8 @@ public class Align_Runner implements PlugIn {
             q_pts, q_pts.length, k_pts, k_pts.length, delta, epsilon, min_ratio, max_ratio);
   }
 
-  int get_heuristic_lb(AdjMat a) {
-    ArrayList<Integer> s1 = a.get_pruned_indices(lower_bound);
+  int get_heuristic_lb(AdjMat a, int l) {
+    ArrayList<Integer> s1 = a.get_pruned_indices(l);
     if (s1.isEmpty()) {
       return 0;
     }
@@ -286,33 +294,46 @@ public class Align_Runner implements PlugIn {
     return clq.size();
   }
 
-  ArrayList<Integer> find_clique(AdjMat a) {
-    System.out.println("max clique");
-    int lb = get_heuristic_lb(a);
+  ArrayList<Integer> find_clique(AdjMat a, int l) {
+    ArrayList<Integer> res = new ArrayList<>();
+    int lb = get_heuristic_lb(a, l);
     // System.out.printf("heuristic gave: %d, lb is: %d\n", lb, lower_bound);
-    lb = Math.max(lb, lower_bound);
+    lb = Math.max(lb, l);
 
     StackDFS s = new StackDFS();
     ArrayList<Integer> s2 = amat.get_pruned_indices(lb);
+    if(s2.isEmpty()) return res;
+
     AdjMat s2m = a.get_submat(s2);
     Graph subg = new Graph();
     subg.load_matrix(s2m.matsize, s2m.mat);
-    // System.out.printf("%d, %s\n", amat.matsize, subg.toString());
+    System.out.printf("%d, %d, %s\n", l, amat.matsize, subg.toString());
     s.process_graph(subg, lb, upper_bound); /* warning is glitch */
 
     ArrayList<Integer> subclq = subg.get_max_clique();
-    ArrayList<Integer> res = new ArrayList<>();
     for (int x : subclq) {
       res.add(s2.get(x));
     }
     return res;
   }
 
+  ArrayList<Integer> clique_breaker(AdjMat a) {
+    ArrayList<Integer> res = new ArrayList<>();
+    for (int l = upper_bound; l >= lower_bound; l--) {
+      res = find_clique(a, l);
+      if(!res.isEmpty()) {
+        break;
+      }
+    }
+    return res;
+  }
+
   void clique_search() {
-    this.clq = this.find_clique(this.amat);
+    System.out.println("max clique");
+    this.clq = clique_breaker(this.amat);
     /* clq = new ArrayList<>(clq.stream().limit(5).collect(Collectors.toList())); */
     AdjMat clean = this.amat.get_wipemat(this.clq);
-    this.altclq = this.find_clique(clean);
+    this.altclq = clique_breaker(clean);
     System.out.println(this.clq);
     System.out.println(this.altclq);
   }
@@ -393,7 +414,7 @@ public class Align_Runner implements PlugIn {
     res.addSlice(q2);
     this.rimg = new ImagePlus("Overlay", res);
     this.rimg.show();
-    ThresholdPanel tpanel = new ThresholdPanel(this.rimg, k10, ovr);
+    ThresholdPanel tpanel = new ThresholdPanel(this.clq.size(), this.rimg, k10, ovr);
     this.rimg.getWindow().add(tpanel, 1);
     this.rimg.getCanvas().fitToWindow();
     this.rimg.getWindow().pack();
