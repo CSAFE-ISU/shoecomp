@@ -793,7 +793,9 @@ class AlignProgression {
       case OVERLAY:
         x.createOverlay();
         x.viewScoreWithHistogram();
-        x.histPlot.show();
+        if(x.show_score) {
+          x.histPlot.show();
+        }
         saveOK.setEnabled(true);
         cancelRun.setEnabled(true);
         asTIFF.setEnabled(true);
