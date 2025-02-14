@@ -124,7 +124,6 @@ public class Image_Loader implements PlugIn {
                 chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("json", "txt");
                 if (validPath == null || validPath.isEmpty()) {
-                  JOptionPane.showMessageDialog(null, "Invalid File!");
                   markup_valid = false;
                 } else {
                   gui.getMarkupPath().setText(validPath);
@@ -144,7 +143,6 @@ public class Image_Loader implements PlugIn {
                 chooser = new JFileChooser(prev);
                 String validPath = checkFileLoad("tiff", "jpg", "png", "tif", "jpeg");
                 if (validPath == null || validPath.isEmpty()) {
-                  JOptionPane.showMessageDialog(null, "Invalid File!");
                   img_valid = false;
                 } else {
                   gui.getImgPath().setText(validPath);
@@ -172,7 +170,10 @@ public class Image_Loader implements PlugIn {
         JOptionPane.showConfirmDialog(
             null, gui.getPanel(), "Load Image and Markup", JOptionPane.OK_CANCEL_OPTION);
     if (p == JOptionPane.CANCEL_OPTION) return;
-    if (!img_valid) return;
+    if (!img_valid) {
+      JOptionPane.showMessageDialog(null, "Unable to load image file!");
+      return;
+    }
 
     ImagePlus tmp = IJ.openImage(gui.getImgPath().getText());
     ImageProcessor raw = tmp.getProcessor();
