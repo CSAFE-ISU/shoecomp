@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -755,7 +756,11 @@ class AlignProgression {
                   if (e instanceof InterruptedException) {
                     System.out.println("canceled: " + e);
                   } else {
-                    e.printStackTrace();
+                    int res = JOptionPane.showConfirmDialog(null, "Unable to align images. Perhaps you can increase the allowable distortion, decrease the lower bound, or mark more points.\nPress OK to view debug log for more details.",
+                            "Unable to Align!", JOptionPane.OK_CANCEL_OPTION);
+                    if (res == JOptionPane.OK_OPTION) {
+                      e.printStackTrace();
+                    }
                   }
                   stepFailCancel();
                 } finally {
