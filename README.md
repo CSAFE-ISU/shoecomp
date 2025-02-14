@@ -28,8 +28,7 @@ This repo contains:
   are available under the [SIL Open Font License](https://openfontlicense.org/).
 
 At present we have a Github Actions runner that provides the ShoeComp plugin as
-a Java JAR, which can be added to Fiji. Soon we will have a Github Actions
-runner that provides releases via ZIP files encapsulating all of the above.
+a Java JAR, and ZIP files of [FIJI][fiji] containing ShoeComp.
 
 [ij2]: https://imagej.net/software/imagej2/
 [fiji]: https://imagej.net/software/fiji/

@@ -122,7 +122,7 @@ public class LandingPage implements PlugIn {
   }
 
   void loadUI() {
-    mainFrame = new JFrame("Main Window");
+    mainFrame = new JFrame("ShoeComp");
     mainFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
     OptionPanel mainPanel = new OptionPanel();
     mainFrame.setContentPane(mainPanel);
