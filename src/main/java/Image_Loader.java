@@ -3,6 +3,8 @@ import ij.ImagePlus;
 import ij.ImageStack;
 import ij.gui.*;
 import ij.plugin.PlugIn;
+import ij.process.ByteProcessor;
+import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
 import java.awt.*;
 import java.awt.event.*;
@@ -179,16 +181,17 @@ public class Image_Loader implements PlugIn {
     ImageProcessor raw = tmp.getProcessor();
 
     ImageStack overlay = new ImageStack();
-    ImageProcessor marked = raw.duplicate();
+    ImageProcessor marked = raw.convertToColorProcessor();
     ImageProcessor mask = raw.createProcessor(raw.getWidth(), raw.getHeight());
 
     overlay.addSlice(marked);
     overlay.addSlice(mask);
     overlay.addSlice(raw);
-    gui.setImg(new ImagePlus(tmp.getShortTitle(), overlay));
+    gui.setImg(new ImagePlus(tmp.getShortTitle(), marked));
 
     ImagePlus img = gui.getImg();
     img.show();
+    img.setProperty("stack", overlay);
     ImageWindow win = img.getWindow();
     ImageCanvas canv = win.getCanvas();
 
@@ -253,8 +256,11 @@ public class Image_Loader implements PlugIn {
       }
     }
 
-    marked.setColor(Color.BLACK);
-    marked.fillOutside(pol);
+    ImageProcessor sg = new ByteProcessor(marked.getWidth(), marked.getHeight());
+    sg.setColor(Color.WHITE);
+    sg.fill(pol);
+    sg.setColorModel(CustomColorModelFactory.getModel(0x90, 0x90, 0x90, 0xD0, 1));
+    marked.drawOverlay(new Overlay(new ImageRoi(0,0,sg)));
 
     mask.setColor(Color.WHITE);
     mask.fill(pol);
@@ -300,8 +306,8 @@ public class Image_Loader implements PlugIn {
           public void actionPerformed(ActionEvent actionEvent) {
             ImagePlus ipz = gui.getImg();
             if (ipz == null) return;
-            if (ipz.hasImageStack()) {
-              ImageStack stk = ipz.getImageStack();
+            if (ipz.getProperty("stack") != null) {
+              ImageStack stk = (ImageStack) ipz.getProperty("stack");
               int N = stk.getSize();
               for (int i = 1; i <= N; ++i) {
                 stk.getProcessor(i).flipHorizontal();
@@ -319,8 +325,8 @@ public class Image_Loader implements PlugIn {
           public void actionPerformed(ActionEvent actionEvent) {
             ImagePlus ipz = gui.getImg();
             if (ipz == null) return;
-            if (ipz.hasImageStack()) {
-              ImageStack stk = ipz.getImageStack();
+            if (ipz.getProperty("stack") != null) {
+              ImageStack stk = (ImageStack) ipz.getProperty("stack");
               int N = stk.getSize();
               for (int i = 1; i <= N; ++i) {
                 stk.getProcessor(i).flipVertical();

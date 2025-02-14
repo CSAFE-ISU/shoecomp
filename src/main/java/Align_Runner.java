@@ -7,21 +7,21 @@ import ij.plugin.PlugIn;
 import ij.process.ColorProcessor;
 import ij.process.FloatPolygon;
 import ij.process.ImageProcessor;
+import io.github.ahgamut.clqmtch.Graph;
+import io.github.ahgamut.clqmtch.HeuristicSearch;
+import io.github.ahgamut.clqmtch.StackDFS;
 import java.awt.*;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
-import java.awt.image.IndexColorModel;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javax.imageio.ImageIO;
@@ -31,9 +31,6 @@ import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import mpicbg.ij.TransformMapping;
 import mpicbg.models.*;
-import io.github.ahgamut.clqmtch.Graph;
-import io.github.ahgamut.clqmtch.HeuristicSearch;
-import io.github.ahgamut.clqmtch.StackDFS;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -360,25 +357,33 @@ public class Align_Runner implements PlugIn {
   }
 
   public void createOverlay() {
-    ij.ImageStack q_stack = q_img.getImageStack();
+    ij.ImageStack q_stack = (ImageStack) q_img.getProperty("stack");
     Point[] qp1 = q_pts;
     ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
     Stroke qs = new BasicStroke(18F);
     Color qcol = new Color(0xf8, 0x5d, 0x19, 0xff);
 
-    ij.ImageStack k_stack = k_img.getImageStack();
+    ij.ImageStack k_stack =(ImageStack) k_img.getProperty("stack");
     Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
     PolygonRoi mapped_k_bounds = aip.mapPolygonRoi(k_bounds, false);
     ArrayList<Integer> kc_ind = aip.getCorrK_ind();
     Stroke ks = new BasicStroke(18F);
     Color kcol = new Color(0x13, 0x83, 0xbd, 0xff);
 
-    ImageProcessor q1 = q_stack.getProcessor(1).duplicate();
+    ImageProcessor q0 = q_stack.getProcessor(1).duplicate();
+    q0.setColor(Color.BLACK);
+    q0.fillOutside(q_bounds);
+
+    ImageProcessor k0 = k_stack.getProcessor(1).duplicate();
+    k0.setColor(Color.BLACK);
+    k0.fillOutside(k_bounds);
+
+    ImageProcessor q1 = q0.duplicate();
     ImageProcessor q2 = q_stack.getProcessor(2).duplicate();
 
     /* transform images via fit */
-    ImageProcessor k1 = k_stack.getProcessor(1).createProcessor(q1.getWidth(), q1.getHeight());
-    aip.mapImage(k_stack.getProcessor(1), false, k1);
+    ImageProcessor k1 = k0.createProcessor(q1.getWidth(), q1.getHeight());
+    aip.mapImage(k0, false, k1);
 
     ImageProcessor k10 = k1.convertToByteProcessor().duplicate();
     ShapeRoi common_bounds = new ShapeRoi(mapped_k_bounds);
@@ -436,13 +441,13 @@ public class Align_Runner implements PlugIn {
   }
 
   boolean saveOverlay(String targ_zip, JLabel currentWork, String imgtype) {
-    ij.ImageStack q_stack = q_img.getImageStack();
+    ij.ImageStack q_stack = (ImageStack) q_img.getProperty("stack");
     Point[] qp0 = q_pts;
     ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
     Stroke qs = new BasicStroke(18F);
     Color qcol = new Color(0xf8, 0x5d, 0x19, 0xff);
 
-    ij.ImageStack k_stack = k_img.getImageStack();
+    ij.ImageStack k_stack = (ImageStack) k_img.getProperty("stack");
     Point[] kp0 = k_pts;
     Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
     ArrayList<Integer> kc_ind = aip.getCorrK_ind();
@@ -1093,46 +1098,5 @@ class AlignImagePairFromPoints<T extends mpicbg.models.AbstractModel<T>> {
     result.put("K", pointData(k_pts, kc_ind));
     /* TODO: include transformation coefficients? transformed point clouds? */
     return result;
-  }
-}
-
-class CustomColorModelFactory {
-  public static IndexColorModel getModel(int r, int g, int b, int a, int bar) {
-    // all pixel values above bar are transparent
-    // rest are filled with r,g,b,a
-    byte[] red = new byte[256];
-    byte[] green = new byte[256];
-    byte[] blue = new byte[256];
-    byte[] alpha = new byte[256];
-
-    for (int i = 0; i < 256; ++i) {
-      red[i] = (byte) r;
-      green[i] = (byte) g;
-      blue[i] = (byte) b;
-      if (i < bar) {
-        alpha[i] = (byte) a;
-      } else {
-        alpha[i] = (byte) 0;
-      }
-    }
-
-    return new IndexColorModel(8, 256, red, green, blue, alpha);
-  }
-
-  public static IndexColorModel getDefaultModel() {
-    int r = 0x9f;
-    int g = 0x14;
-    int b = 0x96;
-    int a = 151;
-    int bar = 110; // all pixel values above this are transparent
-    return getModel(r, g, b, a, bar);
-  }
-
-  public static IndexColorModel getModelThreshed(int bar) {
-    int r = 0x9f;
-    int g = 0x14;
-    int b = 0x96;
-    int a = 151;
-    return getModel(r, g, b, a, bar);
   }
 }
