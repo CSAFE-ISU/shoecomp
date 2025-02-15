@@ -119,7 +119,7 @@ public class Align_RunnerGUI {
     panel.add(new JLabel("and"));
     panel.add(maxRatioT);
 
-    Dictionary dict = new Hashtable();
+    Dictionary<Integer, JLabel> dict = new Hashtable<>();
     dict.put(1, new JLabel("0.1"));
     dict.put(25, new JLabel("2.5"));
     this.deltaT.setLabelTable(dict);
@@ -188,11 +188,15 @@ public class Align_RunnerGUI {
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent e) {
-            ImagePlus z;
-            PointRoi r;
-            z = imgmap.get(Q_imgs.getSelectedItem());
-            r = (PointRoi) z.getProperty("points");
-            Qimg_points.setText(r.size() + " points");
+            ImagePlus z1 = imgmap.get(Q_imgs.getSelectedItem());
+            PointRoi r1 = (PointRoi) z1.getProperty("points");
+            Qimg_points.setText(r1.size() + " points");
+            ImagePlus z2 = imgmap.get(K_imgs.getSelectedItem());
+            PointRoi r2 = (PointRoi) z2.getProperty("points");
+            int lb = Math.min(r1.size(), r2.size());
+            lb = (int) Math.floor(0.6 * (double) lb);
+            lb = Math.max(lb, 5);
+            lowerBoundT.setText(String.valueOf(lb));
           }
         });
 
@@ -203,6 +207,22 @@ public class Align_RunnerGUI {
             getNumPoints(imgmap.get(Q_imgs.getSelectedItem()), Qimg_points);
           }
         });
+
+    this.K_imgs.addActionListener(
+            new ActionListener() {
+              @Override
+              public void actionPerformed(ActionEvent e) {
+                ImagePlus z1 = imgmap.get(Q_imgs.getSelectedItem());
+                PointRoi r1 = (PointRoi) z1.getProperty("points");
+                Qimg_points.setText(r1.size() + " points");
+                ImagePlus z2 = imgmap.get(K_imgs.getSelectedItem());
+                PointRoi r2 = (PointRoi) z2.getProperty("points");
+                int lb = Math.min(r1.size(), r2.size());
+                lb = (int) Math.floor(0.6 * (double) lb);
+                lb = Math.max(lb, 5);
+                lowerBoundT.setText(String.valueOf(lb));
+              }
+            });
 
     this.K_imgs.addActionListener(
         new ActionListener() {
