@@ -4,14 +4,12 @@ import ij.ImageStack;
 import ij.gui.*;
 import ij.plugin.PlugIn;
 import ij.process.ByteProcessor;
-import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.util.prefs.Preferences;
 import javax.swing.*;
-import javax.swing.border.LineBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 class ModPanel extends Panel {

@@ -2,8 +2,6 @@ import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.PointRoi;
 import ij.gui.PolygonRoi;
-
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -11,6 +9,7 @@ import java.text.NumberFormat;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Hashtable;
+import javax.swing.*;
 
 public class Align_RunnerGUI {
   private final JComboBox<String> Q_imgs;
@@ -44,9 +43,9 @@ public class Align_RunnerGUI {
     this.minRatioT = new JFormattedTextField(NumberFormat.getInstance());
     this.maxRatioT = new JFormattedTextField(NumberFormat.getInstance());
     this.deltaT = new JSlider(1, 25);
-    this.deltaT.setValue(6);
+    this.deltaT.setValue(10);
     this.epsilonT = new JSlider(1, 25);
-    this.epsilonT.setValue(6);
+    this.epsilonT.setValue(10);
     this.deltaTVal = new JLabel((deltaT.getValue() / 10.0) + " degrees");
     this.epsilonTVal = new JLabel((epsilonT.getValue() / 10.0) + " units");
     this.lowerBoundT = new JFormattedTextField(NumberFormat.getInstance());
@@ -180,41 +179,38 @@ public class Align_RunnerGUI {
   void loadReactions() {
     this.minRatioT.setText("0.8");
     this.maxRatioT.setText("1.2");
-    this.lowerBoundT.setText("10");
+    this.lowerBoundT.setText("5");
     this.showScoreT.setSelected(true);
     this.Q_imgs.setSelectedIndex(0);
     this.K_imgs.setSelectedIndex(1);
 
-    this.Q_imgs
-        .addActionListener(
-            new ActionListener() {
-              @Override
-              public void actionPerformed(ActionEvent e) {
-                ImagePlus z;
-                PointRoi r;
-                z = imgmap.get(Q_imgs.getSelectedItem());
-                r = (PointRoi) z.getProperty("points");
-                Qimg_points.setText(r.size() + " points");
-              }
-            });
+    this.Q_imgs.addActionListener(
+        new ActionListener() {
+          @Override
+          public void actionPerformed(ActionEvent e) {
+            ImagePlus z;
+            PointRoi r;
+            z = imgmap.get(Q_imgs.getSelectedItem());
+            r = (PointRoi) z.getProperty("points");
+            Qimg_points.setText(r.size() + " points");
+          }
+        });
 
-    this.Q_imgs
-        .addActionListener(
-            new ActionListener() {
-              @Override
-              public void actionPerformed(ActionEvent e) {
-                getNumPoints(imgmap.get(Q_imgs.getSelectedItem()), Qimg_points);
-              }
-            });
+    this.Q_imgs.addActionListener(
+        new ActionListener() {
+          @Override
+          public void actionPerformed(ActionEvent e) {
+            getNumPoints(imgmap.get(Q_imgs.getSelectedItem()), Qimg_points);
+          }
+        });
 
-    this.K_imgs
-        .addActionListener(
-            new ActionListener() {
-              @Override
-              public void actionPerformed(ActionEvent e) {
-                getNumPoints(imgmap.get(K_imgs.getSelectedItem()), Kimg_points);
-              }
-            });
+    this.K_imgs.addActionListener(
+        new ActionListener() {
+          @Override
+          public void actionPerformed(ActionEvent e) {
+            getNumPoints(imgmap.get(K_imgs.getSelectedItem()), Kimg_points);
+          }
+        });
 
     this.showScoreT.addActionListener(
         new ActionListener() {

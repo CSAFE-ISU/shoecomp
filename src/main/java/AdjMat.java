@@ -1,7 +1,5 @@
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.TreeSet;
 
 public class AdjMat {
   int matsize;
@@ -38,9 +36,9 @@ public class AdjMat {
     int N = verts.size();
     AdjMat res = new AdjMat(this.matsize);
     for (int i = 0; i < matsize; i++) {
-      if(verts.contains(i)) continue;
+      if (verts.contains(i)) continue;
       for (int j = 0; j < matsize; j++) {
-        if(verts.contains(j)) continue;
+        if (verts.contains(j)) continue;
         res.mat[i][j] = mat[i][j];
       }
     }
@@ -72,8 +70,8 @@ public class AdjMat {
     ArrayList<Integer> res = new ArrayList<>();
 
     for (int i = 0; i < matsize; ++i) {
-      for(int j = 0; j < matsize; j++) {
-        if(mat[i][j] == 1 || mat[j][i] == 1) {
+      for (int j = 0; j < matsize; j++) {
+        if (mat[i][j] == 1 || mat[j][i] == 1) {
           tmat[i][j] = 1;
         } else {
           tmat[i][j] = 0;
@@ -103,13 +101,13 @@ public class AdjMat {
       for (int i = 0; i < matsize; i++) {
         if (degrees[i] >= lower_bound) {
           n += 1;
-        } else if (degrees[i] != 0){
+        } else if (degrees[i] != 0) {
           // System.out.printf("%d: %d\n", i, degrees[i]);
           valid_verts[i] = 0;
           bad_verts.add(i);
         }
       }
-    } while(n != prev_n);
+    } while (n != prev_n);
 
     for (int i = 0; i < matsize; i++) {
       if (valid_verts[i] == 1) {

@@ -111,6 +111,7 @@ class ThresholdPanel extends Panel {
   GridBagConstraints gbc;
   int clq_size;
   JLabel clq;
+
   ThresholdPanel(int clq_size, ImagePlus imp, ImageProcessor k, ImageProcessor ovr) {
     super();
     this.layout = new GridBagLayout();
@@ -149,7 +150,7 @@ class ThresholdPanel extends Panel {
   void doOverlay(int b) {
     ImageProcessor k_pres = k.duplicate();
     k_pres.setColorModel(CustomColorModelFactory.getModelThreshed(b));
-    ImageRoi roi = new ImageRoi(0,0,k_pres);
+    ImageRoi roi = new ImageRoi(0, 0, k_pres);
     ovr.reset();
     // ovr.snapshot();
     ovr.drawRoi(roi);
@@ -157,15 +158,16 @@ class ThresholdPanel extends Panel {
   }
 
   void setReactions() {
-      this.slider.addChangeListener(new ChangeListener() {
-        @Override
-        public void stateChanged(ChangeEvent changeEvent) {
-            if(slider.getValueIsAdjusting()) {
+    this.slider.addChangeListener(
+        new ChangeListener() {
+          @Override
+          public void stateChanged(ChangeEvent changeEvent) {
+            if (slider.getValueIsAdjusting()) {
               int b = slider.getValue();
               doOverlay(b);
             }
-        }
-      });
+          }
+        });
   }
 }
 
@@ -297,11 +299,11 @@ public class Align_Runner implements PlugIn {
     int lb = get_heuristic_lb(a, l);
     // System.out.printf("heuristic gave: %d, lb is: %d\n", lb, lower_bound);
     lb = Math.max(lb, l);
-    if(lb >= upper_bound) lb = upper_bound - 1;
+    if (lb >= upper_bound) lb = upper_bound - 1;
 
     StackDFS s = new StackDFS();
     ArrayList<Integer> s2 = amat.get_pruned_indices(lb);
-    if(s2.isEmpty()) return res;
+    if (s2.isEmpty()) return res;
 
     AdjMat s2m = a.get_submat(s2);
     Graph subg = new Graph();
@@ -320,7 +322,7 @@ public class Align_Runner implements PlugIn {
     ArrayList<Integer> res = new ArrayList<>();
     for (int l = upper_bound; l >= lower_bound; l--) {
       res = find_clique(a, l);
-      if(!res.isEmpty()) {
+      if (!res.isEmpty()) {
         break;
       }
     }
@@ -364,7 +366,7 @@ public class Align_Runner implements PlugIn {
     Stroke qs = new BasicStroke(18F);
     Color qcol = new Color(0xf8, 0x5d, 0x19, 0xff);
 
-    ij.ImageStack k_stack =(ImageStack) k_img.getProperty("stack");
+    ij.ImageStack k_stack = (ImageStack) k_img.getProperty("stack");
     Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
     PolygonRoi mapped_k_bounds = aip.mapPolygonRoi(k_bounds, false);
     ArrayList<Integer> kc_ind = aip.getCorrK_ind();
@@ -528,7 +530,7 @@ public class Align_Runner implements PlugIn {
         currentWork.setText("Saving in ZIP: " + tmp);
         img = new ImagePlus("", res_stack.getProcessor(j));
         info = img.getFileInfo();
-        if(imgtype.equals("png")) {
+        if (imgtype.equals("png")) {
           zos.putNextEntry(new ZipEntry(tmp + ".png"));
           ImageIO.write(img.getBufferedImage(), "png", out);
         } else {
@@ -724,12 +726,13 @@ class AlignProgression {
             }
           }
         });
-    nextMax.addActionListener(new ActionListener() {
-      @Override
-      public void actionPerformed(ActionEvent actionEvent) {
-        tryNextAlignment();
-      }
-    });
+    nextMax.addActionListener(
+        new ActionListener() {
+          @Override
+          public void actionPerformed(ActionEvent actionEvent) {
+            tryNextAlignment();
+          }
+        });
     cancelRun.setEnabled(true);
   }
 
@@ -762,8 +765,12 @@ class AlignProgression {
                   if (e instanceof InterruptedException) {
                     System.out.println("canceled: " + e);
                   } else {
-                    int res = JOptionPane.showConfirmDialog(null, "Unable to align images. Perhaps you can increase the allowable distortion, decrease the lower bound, or mark more points.\nPress OK to view debug log for more details.",
-                            "Unable to Align!", JOptionPane.OK_CANCEL_OPTION);
+                    int res =
+                        JOptionPane.showConfirmDialog(
+                            null,
+                            "Unable to align images. Perhaps you can increase the allowable distortion, decrease the lower bound, or mark more points.\nPress OK to view debug log for more details.",
+                            "Unable to Align!",
+                            JOptionPane.OK_CANCEL_OPTION);
                     if (res == JOptionPane.OK_OPTION) {
                       e.printStackTrace();
                     }
@@ -825,7 +832,7 @@ class AlignProgression {
       case OVERLAY:
         x.createOverlay();
         x.viewScoreWithHistogram();
-        if(x.show_score) {
+        if (x.show_score) {
           x.histPlot.show();
         }
         saveOK.setEnabled(true);

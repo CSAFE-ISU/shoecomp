@@ -1,8 +1,5 @@
 import ij.ImagePlus;
 import java.awt.*;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.Rectangle2D;
-import java.awt.image.ColorModel;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.nio.file.Path;
