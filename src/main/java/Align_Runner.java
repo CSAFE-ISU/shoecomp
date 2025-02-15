@@ -297,6 +297,7 @@ public class Align_Runner implements PlugIn {
     int lb = get_heuristic_lb(a, l);
     // System.out.printf("heuristic gave: %d, lb is: %d\n", lb, lower_bound);
     lb = Math.max(lb, l);
+    if(lb >= upper_bound) lb = upper_bound - 1;
 
     StackDFS s = new StackDFS();
     ArrayList<Integer> s2 = amat.get_pruned_indices(lb);
@@ -305,7 +306,7 @@ public class Align_Runner implements PlugIn {
     AdjMat s2m = a.get_submat(s2);
     Graph subg = new Graph();
     subg.load_matrix(s2m.matsize, s2m.mat);
-    System.out.printf("%d, %d, %s\n", l, amat.matsize, subg.toString());
+    // System.out.printf("%d, %d, %s\n", l, amat.matsize, subg.toString());
     s.process_graph(subg, lb, upper_bound); /* warning is glitch */
 
     ArrayList<Integer> subclq = subg.get_max_clique();
