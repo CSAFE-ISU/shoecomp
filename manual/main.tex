@@ -75,13 +75,13 @@ screenshot of the basic ShoeComp user interface:
 
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=0.8\linewidth]{images/shoecomp.png}
+		\includegraphics[height=0.4\linewidth]{images/shoecomp.png}
 	\end{center}
 	\caption{The basic Graphical User Interface (GUI) of ShoeComp. There are six options:
 		\texttt{Load Image} to load a new shoeprint image or resume previous markup work, \texttt{Save
 			Markup} to save markup work for export or later use, \texttt{Run Alignment} to align two
 		shoeprint images, \texttt{About} displays information about ShoeComp and CSAFE,
-		\texttt{Debug} toggles the classic ImageJ GUI for advanced usage or debugging, and
+		\texttt{Settings} toggles the classic ImageJ GUI for advanced usage or debugging, and
 		\texttt{Exit} closes the application.}
 	\label{fig:shoecomp_base}
 \end{figure}
@@ -120,15 +120,16 @@ available.
 
 \section{Downloading ShoeComp}
 
-You can download ShoeComp as a ZIP file \selfref{https://github.com/CSAFE-ISU/releases}.
-Select the ZIP file according to your operating system. For this guide we will be using a
-Windows computer.
+You can download ShoeComp as a ZIP file from
+\selfref{https://github.com/CSAFE-ISU/releases}. Select the latest version, and download
+the ZIP file according to your operating system. For this guide we will be using a Windows
+computer.
 
 \begin{figure}[htbp]
 	\begin{center}
 		\includegraphics[width=0.8\linewidth]{images/step_1-anno.png}
 	\end{center}
-	\caption{Download ShoeComp as a ZIP File from the CSAFE-ISU Github page.}
+	\caption{Download the latest version of ShoeComp as a ZIP File from the CSAFE-ISU Github page.}
 	\label{fig:step1}
 \end{figure}
 
@@ -192,7 +193,7 @@ marking interest points in the relevant area of the shoeprint.
 	\begin{center}
 		\includegraphics[width=0.8\linewidth]{images/step_4c-anno.png}
 	\end{center}
-	\caption{The boundary polygon has been marked, so now we can close this window.}
+	\caption{The boundary polygon has been marked, so now we can click this button.}
 	\label{fig:step4c}
 \end{figure}
 
@@ -214,10 +215,9 @@ point.
 	\label{fig:step4d}
 \end{figure}
 
-Around 20-30 marked points on the image should be enough for trying out an alignment
-Theoretically, we should only need 3 points for solving rotation, translation, and scale,
-but there might be noise in the image, non-linear distortions, and marking error, so 20-30
-is a rule of thumb for alignment.
+Theoretically, we only need 3 points for solving rotation, translation, and scale,
+but there might be noise in the image, non-linear distortions, and marking error, so
+\underline{20-30 marked points} is a rule of thumb for alignment.
 
 \begin{figure}[H]
 	\begin{center}
@@ -282,11 +282,11 @@ alignment is. We can do that by clicking on the \texttt{Run Alignment} button:
 		\texttt{QK010-KF} as the reference image, fill an approximate range for scale difference
 		between these images (it should be around 1 in this case). For now, let's use the defaults
 		for the maximum allowed distortion, but generally smaller values indicate more rigid
-		transformations. We would like the alignment to align at least 10 points in common from
+		transformations. We would like the alignment to align at least 15 points in common from
 		the points we marked. Finally, we select one of the similarity scores to view.}
 	\label{fig:step8a}
 \end{figure}
-
+\vspace*{-1.5em}
 The alignment might take some time to run, depending on the number of points marked and
 how large the allowed ranges for scaling and distortion are.
 
@@ -299,27 +299,40 @@ how large the allowed ranges for scaling and distortion are.
 	\label{fig:step8b}
 \end{figure}
 
-After the alignment process has completed, we see two new windows: one showing the overlay
-of the images, and the other showing a similarity score measurement related to the
+Sometimes the alignment process may fail, which means you would have to mark more points,
+allow for more distortion, or reduce the minimum number of points required for an
 alignment.
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[width=0.8\linewidth]{images/step_8b_fail-anno.png}
+	\end{center}
+	\caption{Alignment process failed. Click cancel and try to align again.}
+	\label{fig:step8b_fail}
+\end{figure}
+
+After the alignment process has successfully completed, we see two new windows: one
+showing the overlay of the images, and the other showing a similarity score measurement
+related to the alignment.
 
 \begin{figure}[H]
 	\begin{center}
 		\includegraphics[width=0.8\linewidth]{images/step_8c-anno.png}
 	\end{center}
-	\caption{Alignment complete. You can look at the purple overlay and the points to see how well the reference image has been aligned to the questioned image. Square points indicate those points were selected in the alignment, and circular points indicate those points which were not. Generally, we would expect the square points to be almost on top of one another, but that depends on the alignment. The similarity score provides a numerical measurement with respect to an example background distribution.}
+	\caption{Alignment complete. You can look at the purple overlay and the points to see how well the reference image has been aligned to the questioned image. Square points indicate those points were selected in the alignment, and circular points indicate those points which were not. Generally, we would expect the square points to be almost on top of one another. The similarity score provides a numerical measurement with respect to an example background distribution.}
 	\label{fig:step8c}
 \end{figure}
 
-If you'd like to retry the alignment, you can click \texttt{Don't Save} and try again.
-However, this alignment seems okay, so let's click on \texttt{Save Info}:
+If you'd like to find other possible alignments, you can click \texttt{Next Alignment} if
+possible. To retry the alignment, you can click \texttt{Don't Save} and try again.
+However, this alignment seems to be the only one satisfying our constraints, so let's
+click on \texttt{Save Info}:
 
 \begin{figure}[H]
 	\begin{center}
 		\includegraphics[width=0.8\linewidth]{images/step_8d-anno.png}
 	\end{center}
-	\caption{Saving the alignment into a ZIP file. Click on \texttt{Save Info}, and write the
-		filename of ZIP file into which the alignment will be saved, and then click \texttt{Save}.}
+	\caption{Saving the alignment into a ZIP file. Select image format as PNG or TIFF, Click on \texttt{Save Info}, and write the filename of ZIP file into which the alignment will be saved, and then click \texttt{Save}.}
 	\label{fig:step8d}
 \end{figure}
 
@@ -329,11 +342,11 @@ process. The ZIP file at present contains:
 \begin{itemize}
 	\item three JSON files: one for each image markup, and one for the points calculated
 	      during the alignment,
-	\item three TIFF files corresponding to the questioned image: the original image, the
+	\item three PNG/TIFF files corresponding to the questioned image: the original image, the
 	      polygon mask indicating the relevant region, and the points marked.
-	\item three TIFF files corresponding to the reference image: the original image, the
+	\item three PNG/TIFF files corresponding to the reference image: the original image, the
 	      polygon mask indicating the relevant region, and the points marked.
-	\item three TIFF files corresponding to the reference image, \textit{transformed so
+	\item three PNG/TIFF files corresponding to the reference image, \textit{transformed so
 		      that they align to the questioned image}: the original image, the
 	      polygon mask indicating the relevant region, and the points marked.
 \end{itemize}
