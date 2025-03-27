@@ -108,6 +108,7 @@ public class ImageLoader implements PlugIn {
     markup_begin = false;
   }
 
+
   public static void callFromMacro() {
     ImageLoader x = new ImageLoader();
     x.run("");

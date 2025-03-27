@@ -6,13 +6,15 @@
 
 <startupAction>
 eval("js", "if(IJ.getInstance().isVisible()) IJ.getInstance().setVisible(false);");
+call("LandingPage.callFromMacro");
 </startupAction>
+
 
 <line>
 <button>
 icon=../../../macros/LoadImage.png
 arg=<macro>
-call("Image_Loader.callFromMacro");
+call("ImageLoader.callFromMacro");
 </macro>
 
 <separator>
@@ -20,7 +22,7 @@ call("Image_Loader.callFromMacro");
 <button>
 icon=../../../macros/SaveMarkup.png
 arg=<macro>
-call("Image_Saver.callFromMacro");
+call("ImageSaver.callFromMacro");
 </macro>
 
 <separator>
@@ -28,7 +30,7 @@ call("Image_Saver.callFromMacro");
 <button>
 icon=../../../macros/RunAlignment.png
 arg=<macro>
-call("Align_Runner.callFromMacro");
+call("AlignRunner.callFromMacro");
 </macro>
 
 </line>
@@ -38,7 +40,7 @@ call("Align_Runner.callFromMacro");
 <button>
 icon=../../../macros/About.png
 arg=<macro>
-call("About_Page.callFromMacro");
+call("AboutPage.callFromMacro");
 </macro>
 
 <separator>

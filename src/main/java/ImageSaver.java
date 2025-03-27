@@ -44,36 +44,47 @@ public class ImageSaver {
               }
             });
 
-    gui.getImgSaveButton()
-        .addActionListener(
+    gui.getImgSaveButton().addActionListener(
             new ActionListener() {
               @Override
               public void actionPerformed(ActionEvent e) {
-                String prev =
-                    prefs.get("PreviousImageSave", System.getProperty("user.home"));
+                String prev = prefs.get("PreviousImageSave", System.getProperty("user.home"));
                 chooser = new JFileChooser(prev);
-                String validPath = checkFileSave("tiff", "jpg", "png");
-                if (!(validPath.endsWith(".tiff")
-                    || validPath.endsWith(".tif")
-                    || validPath.endsWith(".jpg")
-                    || validPath.endsWith(".png"))) {
-                  validPath += ".tiff";
-                }
-                if (validPath == null || validPath.isEmpty()) {
-                  JOptionPane.showMessageDialog(null, "Invalid File!");
+                chooser.setAcceptAllFileFilterUsed(false);
+
+                FileNameExtensionFilter tiffFilter = new FileNameExtensionFilter("TIFF Images", "tif", "tiff");
+                FileNameExtensionFilter pngFilter = new FileNameExtensionFilter("PNG Images", "png");
+                chooser.addChoosableFileFilter(tiffFilter);
+                chooser.addChoosableFileFilter(pngFilter);
+                chooser.setFileFilter(tiffFilter); // default
+
+                int returnVal = chooser.showSaveDialog(null);
+                if (returnVal != JFileChooser.APPROVE_OPTION) {
                   img_valid = false;
-                } else {
-                  gui.getImgPath().setText(validPath);
-                  img_valid = true;
-                  File file = new File(validPath);
-                  if (file.exists()) {
-                    JOptionPane.showMessageDialog(null, "File Already Exists!");
-                  }
-                  String selected = new File(validPath).getParent();
-                  prefs.put("PreviousImageSave", selected);
+                  return;
                 }
+
+                File selectedFile = chooser.getSelectedFile();
+                FileNameExtensionFilter selectedFilter = (FileNameExtensionFilter) chooser.getFileFilter();
+                String[] extensions = selectedFilter.getExtensions();
+                String chosenExt = extensions[0].toLowerCase();
+
+                // Remove existing extension and add the correct one
+                String baseName = selectedFile.getAbsolutePath().replaceAll("\\.[^.]+$", "");
+                String validPath = baseName + "." + chosenExt;
+
+                File file = new File(validPath);
+                if (file.exists()) {
+                  JOptionPane.showMessageDialog(null, "File Already Exists!");
+                }
+
+                gui.getImgPath().setText(validPath);
+                img_valid = true;
+                prefs.put("PreviousImageSave", file.getParent());
               }
             });
+
+
 
     gui.getMarkupSaveButton()
         .addActionListener(
@@ -106,19 +117,14 @@ public class ImageSaver {
   }
 
   String checkFileSave(String... fileTypes) {
-    chooser.setFileFilter(new FileNameExtensionFilter("*.*", fileTypes));
+    chooser.setFileFilter(new FileNameExtensionFilter("Allowed types", fileTypes));
     int returnValue = chooser.showSaveDialog(null);
-
     if (returnValue == JFileChooser.APPROVE_OPTION) {
-      File file = chooser.getSelectedFile();
-      return file.getAbsolutePath();
+      return chooser.getSelectedFile().getAbsolutePath();
     }
-    /* TODO:
-       show some sort of progress when saving,
-       and close the frame at the end
-    */
-    return "";
+    return null;
   }
+
 
   public void run(String arg) {
     int p =
@@ -130,8 +136,23 @@ public class ImageSaver {
     ImagePlus tmp =
         gui.getImgMap().get(Objects.requireNonNull(gui.getImgs().getSelectedItem()).toString());
     if (img_valid) {
-      IJ.save(tmp, gui.getImgPath().getText());
+      String path = gui.getImgPath().getText();
+      String ext = getFileExtension(path).toLowerCase();
+      String format;
+      switch (ext) {
+        case "png":
+          format = "png";
+          break;
+        case "tif":
+        case "tiff":
+          format = "tiff";
+          break;
+        default:
+          format = "tiff"; // Fallback
+      }
+      IJ.saveAs(tmp, format, path);
     }
+
     if (markup_valid) {
       PolygonRoi pol = (PolygonRoi) tmp.getProperty("bounds");
       PointRoi pts = (PointRoi) tmp.getProperty("points");
@@ -143,6 +164,13 @@ public class ImageSaver {
       }
     }
     JOptionPane.showMessageDialog(null, "Save complete.");
+  }
+  private String getFileExtension(String filename) {
+    int dotIndex = filename.lastIndexOf('.');
+    if (dotIndex >= 0 && dotIndex < filename.length() - 1) {
+      return filename.substring(dotIndex + 1);
+    }
+    return "";
   }
 
   private class ImageSaverGUI {

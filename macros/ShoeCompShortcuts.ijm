@@ -5,3 +5,7 @@ macro "SaveMarkup [s]" {
 macro "LoadMarkup [o]" {
     call("Image_Loader.callFromMacro");
 }
+
+macro "LandingPage[x]" {
+     call ("LandingPage.callFromMacro");
+}

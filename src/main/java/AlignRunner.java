@@ -238,6 +238,7 @@ public class AlignRunner implements PlugIn {
   }
 
   public static void callFromMacro() {
+
     AlignRunnerGUI gui = new AlignRunnerGUI();
     gui.loadReactions();
 
