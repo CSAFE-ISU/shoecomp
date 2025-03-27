@@ -93,15 +93,15 @@ class ModPanel extends Panel {
   }
 }
 
-public class Image_Loader implements PlugIn {
-  private final Image_LoaderGUI gui;
+public class ImageLoader implements PlugIn {
+  private final ImageLoaderGUI gui;
   boolean markup_begin;
   private JFileChooser chooser;
   private boolean img_valid;
   private boolean markup_valid;
 
-  public Image_Loader() {
-    this.gui = new Image_LoaderGUI();
+  public ImageLoader() {
+    this.gui = new ImageLoaderGUI();
     this.chooser = new JFileChooser();
     this.loadReactions();
 
@@ -109,12 +109,12 @@ public class Image_Loader implements PlugIn {
   }
 
   public static void callFromMacro() {
-    Image_Loader x = new Image_Loader();
+    ImageLoader x = new ImageLoader();
     x.run("");
   }
 
   private void loadReactions() {
-    Preferences prefs = Preferences.userNodeForPackage(Image_Loader.class);
+    Preferences prefs = Preferences.userNodeForPackage(ImageLoader.class);
     gui.getMarkupLoadButton()
         .addActionListener(
             new ActionListener() {
@@ -391,4 +391,69 @@ public class Image_Loader implements PlugIn {
     PolygonRoi pol = (PolygonRoi) imp.getRoi();
     return pol;
   }
+
+  private class ImageLoaderGUI {
+    private final JButton imgLoadButton;
+    private final JTextArea imgPath;
+    private final JButton markupLoadButton;
+    private final JTextArea markupPath;
+    private final JPanel panel;
+    private ImagePlus img;
+
+    private ImageLoaderGUI() {
+      this.panel = new JPanel(new GridLayout(3, 2));
+
+      this.imgLoadButton = new JButton("Load Image...");
+      this.imgPath = new JTextArea();
+      imgPath.setEditable(false);
+      imgPath.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+
+      this.markupLoadButton = new JButton("Markup File Location...");
+      this.markupPath = new JTextArea();
+      markupPath.setEditable(false);
+      markupPath.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+
+      this.img = null;
+      this.loadUI();
+    }
+
+    private void loadUI() {
+      panel.add(new JLabel());
+      panel.add(new JLabel());
+      panel.add(imgLoadButton);
+      panel.add(imgPath);
+      panel.add(markupLoadButton);
+      panel.add(markupPath);
+      markupPath.setEnabled(false);
+    }
+
+    private JButton getImgLoadButton() {
+      return imgLoadButton;
+    }
+
+    private JTextArea getImgPath() {
+      return imgPath;
+    }
+
+    private JButton getMarkupLoadButton() {
+      return markupLoadButton;
+    }
+
+    private JTextArea getMarkupPath() {
+      return markupPath;
+    }
+
+    private JPanel getPanel() {
+      return panel;
+    }
+
+    private ImagePlus getImg() {
+      return img;
+    }
+
+    private void setImg(ImagePlus img) {
+      this.img = img;
+    }
+  }
+
 }

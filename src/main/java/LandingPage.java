@@ -22,7 +22,7 @@ class OptionPanel extends JPanel {
     loadReactions();
   }
 
-  private static JButton getButtonMade(Path path, String tip) {
+  private JButton getButtonMade(Path path, String tip) {
     ImageIcon img = new ImageIcon(path.toAbsolutePath().toString());
     JButton result = new JButton();
     result.setIcon(img);
@@ -59,7 +59,7 @@ class OptionPanel extends JPanel {
                     new Runnable() {
                       @Override
                       public void run() {
-                        Image_Loader.callFromMacro();
+                        ImageLoader.callFromMacro();
                       }
                     });
             work.start();
@@ -69,7 +69,7 @@ class OptionPanel extends JPanel {
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent actionEvent) {
-            Image_Saver.callFromMacro();
+            ImageSaver.callFromMacro();
           }
         });
     runAlignment.addActionListener(
@@ -81,7 +81,7 @@ class OptionPanel extends JPanel {
                     new Runnable() {
                       @Override
                       public void run() {
-                        Align_Runner.callFromMacro();
+                        AlignRunner.callFromMacro();
                       }
                     });
             work.start();
@@ -91,7 +91,7 @@ class OptionPanel extends JPanel {
         new ActionListener() {
           @Override
           public void actionPerformed(ActionEvent actionEvent) {
-            About_Page.callFromMacro();
+            AboutPage.callFromMacro();
           }
         });
     exitButton.addActionListener(

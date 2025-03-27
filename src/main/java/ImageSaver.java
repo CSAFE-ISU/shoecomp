@@ -1,35 +1,39 @@
 import ij.IJ;
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.gui.PointRoi;
 import ij.gui.PolygonRoi;
+
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.prefs.Preferences;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-public class Image_Saver {
+public class ImageSaver {
 
-  private final Image_SaverGUI gui;
+  private final ImageSaverGUI gui;
   private JFileChooser chooser;
   private boolean img_valid;
   private boolean markup_valid;
 
-  public Image_Saver() {
-    gui = new Image_SaverGUI();
+  public ImageSaver() {
+    gui = new ImageSaverGUI();
     this.chooser = new JFileChooser();
     loadReactions();
   }
 
   public static void callFromMacro() {
-    Image_Saver x = new Image_Saver();
+    ImageSaver x = new ImageSaver();
     x.run("");
   }
 
   private void loadReactions() {
-    Preferences prefs = Preferences.userNodeForPackage(Image_Saver.class);
+    Preferences prefs = Preferences.userNodeForPackage(ImageSaver.class);
     gui.getImgs()
         .addActionListener(
             new ActionListener() {
@@ -49,10 +53,10 @@ public class Image_Saver {
                     prefs.get("PreviousImageSave", System.getProperty("user.home"));
                 chooser = new JFileChooser(prev);
                 String validPath = checkFileSave("tiff", "jpg", "png");
-                if (!validPath.endsWith(".tiff")
-                    || !validPath.endsWith(".tif")
-                    || !validPath.endsWith(".jpg")
-                    || !validPath.endsWith(".png")) {
+                if (!(validPath.endsWith(".tiff")
+                    || validPath.endsWith(".tif")
+                    || validPath.endsWith(".jpg")
+                    || validPath.endsWith(".png"))) {
                   validPath += ".tiff";
                 }
                 if (validPath == null || validPath.isEmpty()) {
@@ -139,5 +143,99 @@ public class Image_Saver {
       }
     }
     JOptionPane.showMessageDialog(null, "Save complete.");
+  }
+
+  private class ImageSaverGUI {
+    private final JButton imgSaveButton;
+    private final JTextArea imgPath;
+    private final JButton markupSaveButton;
+    private final JTextArea markupPath;
+    private final JPanel panel;
+    private final HashMap<String, ImagePlus> imgmap;
+    private final JComboBox<String> imgs;
+    private final JTextArea dummy;
+
+    private ImageSaverGUI() {
+      this.panel = new JPanel(new GridLayout(6, 2));
+      this.dummy = new JTextArea();
+      dummy.setText("Save Image + Markup");
+      dummy.setEditable(false);
+
+      this.imgmap = new HashMap<>();
+      this.imgs = new JComboBox<>();
+
+      this.imgSaveButton = new JButton("Save Image to:");
+      this.imgPath = new JTextArea();
+      imgPath.setEditable(false);
+      imgPath.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+
+      this.markupSaveButton = new JButton();
+      markupSaveButton.setText("Save Markup To:");
+      this.markupPath = new JTextArea();
+      markupPath.setEditable(false);
+      markupPath.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+
+      loadUI();
+    }
+
+    private void loadUI() {
+      panel.add(dummy);
+      panel.add(new JLabel());
+
+      int[] idList = WindowManager.getIDList();
+      if (idList == null || idList.length == 0) {
+        dummy.setText("no Images to save!");
+        return;
+      }
+      ImagePlus tmp;
+      for (int id : idList) {
+        tmp = WindowManager.getImage(id);
+        imgmap.put(tmp.getShortTitle(), tmp);
+        imgs.addItem(tmp.getShortTitle());
+      }
+
+      panel.add(new JLabel("Select Image:"));
+      panel.add(imgs);
+      panel.add(imgSaveButton);
+      panel.add(imgPath);
+      panel.add(new JLabel());
+      panel.add(new JLabel());
+      panel.add(markupSaveButton);
+      panel.add(markupPath);
+
+      markupPath.setEnabled(false);
+    }
+
+    private JButton getImgSaveButton() {
+      return imgSaveButton;
+    }
+
+    private JTextArea getImgPath() {
+      return imgPath;
+    }
+
+    private JButton getMarkupSaveButton() {
+      return markupSaveButton;
+    }
+
+    private JTextArea getMarkupPath() {
+      return markupPath;
+    }
+
+    private JPanel getPanel() {
+      return panel;
+    }
+
+    private HashMap<String, ImagePlus> getImgMap() {
+      return imgmap;
+    }
+
+    private JComboBox<String> getImgs() {
+      return imgs;
+    }
+
+    private JTextArea getDummy() {
+      return dummy;
+    }
   }
 }

@@ -1,11 +1,11 @@
 import java.awt.*;
 import javax.swing.*;
 
-public class About_Page {
+public class AboutPage {
   private final JPanel panel;
   private final JTextArea dummy;
 
-  public About_Page() {
+  public AboutPage() {
     this.panel = new JPanel(new GridLayout(2, 1));
     this.dummy = new JTextArea();
     this.dummy.setMaximumSize(new Dimension(400, 600));
@@ -26,7 +26,7 @@ public class About_Page {
   }
 
   public static void callFromMacro() {
-    About_Page x = new About_Page();
+    AboutPage x = new AboutPage();
     x.run("");
   }
 
