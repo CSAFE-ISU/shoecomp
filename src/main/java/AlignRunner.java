@@ -41,6 +41,8 @@ import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Hashtable;
 
+import static ij.plugin.OverlayLabels.createOverlay;
+
 enum StatusProgress {
   CANCELED(0) {},
   STARTING(1) {
@@ -203,6 +205,8 @@ public class AlignRunner implements PlugIn {
   ImagePlus rimg;
   ImagePlus histPlot;
   double score;
+  ArrayList<ArrayList<Integer>> alignmentHistory = new ArrayList<>();
+  int currentAlignmentIndex = -1;
 
   public AlignRunner(
           ImagePlus q_img,
@@ -340,6 +344,9 @@ public class AlignRunner implements PlugIn {
   void clique_search() {
     System.out.println("max clique");
     this.clq = clique_breaker(this.amat);
+    alignmentHistory.add(new ArrayList<>(this.clq));
+    currentAlignmentIndex = alignmentHistory.size() - 1;
+
     /* clq = new ArrayList<>(clq.stream().limit(5).collect(Collectors.toList())); */
     AdjMat clean = this.amat.get_wipemat(this.clq);
     this.altclq = clique_breaker(clean);
@@ -626,6 +633,7 @@ class AlignProgression {
   JButton cancelRun;
 
   JButton nextMax;
+  JButton prevMax;
 
   ButtonGroup imgtype;
   JRadioButton asPNG;
@@ -657,6 +665,7 @@ class AlignProgression {
     saveOK = new JButton("Save Info");
     cancelRun = new JButton("Cancel");
     nextMax = new JButton("Next Alignment");
+    prevMax= new JButton("Previous Alignment");
     imgtype = new ButtonGroup();
     asPNG = new JRadioButton("PNG");
     asTIFF = new JRadioButton("TIFF");
@@ -705,12 +714,18 @@ class AlignProgression {
     gbc.gridwidth = 1;
     layout.setConstraints(asTIFF, gbc);
     subpanel.add(asTIFF, gbc);
+    gbc.gridx = 0;
+    gbc.gridy = 4;
+    gbc.gridwidth = 2;
+    layout.setConstraints(prevMax, gbc);
+    subpanel.add(prevMax, gbc);
+
     gbc.gridx = 2;
-    gbc.gridy = 3;
-    gbc.ipady = 0;
+    gbc.gridy = 4;
     gbc.gridwidth = 2;
     layout.setConstraints(nextMax, gbc);
     subpanel.add(nextMax, gbc);
+
 
     frame.setContentPane(subpanel);
     frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -739,10 +754,26 @@ class AlignProgression {
               @Override
               public void actionPerformed(ActionEvent actionEvent) {
                 tryNextAlignment();
+                updateNavButtons();
+              }
+            });
+
+    prevMax.addActionListener(
+            new ActionListener() {
+              @Override
+              public void actionPerformed(ActionEvent actionEvent) {
+                tryPreviousAlignment();
+                updateNavButtons();
               }
             });
     cancelRun.setEnabled(true);
   }
+
+  void updateNavButtons() {
+    nextMax.setEnabled(x.currentAlignmentIndex + 1 < x.alignmentHistory.size());
+    prevMax.setEnabled(x.currentAlignmentIndex > 0);
+  }
+
 
   public boolean stillRunning() {
     return status != StatusProgress.COMPLETED && status != StatusProgress.CANCELED;
@@ -874,8 +905,7 @@ class AlignProgression {
     asTIFF.setEnabled(false);
     asPNG.setEnabled(false);
     cancelRun.setText("Cancel");
-    x.amat = x.amat.get_wipemat(x.clq);
-    status = StatusProgress.ALIGNING;
+
     if (x.rimg != null) {
       x.rimg.close();
       x.rimg = null;
@@ -884,8 +914,71 @@ class AlignProgression {
       x.histPlot.close();
       x.histPlot = null;
     }
-    changeUI();
+
+    if (x.currentAlignmentIndex + 1 < x.alignmentHistory.size()) {
+      x.currentAlignmentIndex++;
+      x.clq = x.alignmentHistory.get(x.currentAlignmentIndex);
+      refreshOverlay();
+      return;
+    }
+
+    x.amat = x.amat.get_wipemat(x.clq);
+    ArrayList<Integer> nextClq = x.clique_breaker(x.amat);
+    if (!nextClq.isEmpty()) {
+      x.alignmentHistory.add(nextClq);
+      x.currentAlignmentIndex++;
+      x.clq = nextClq;
+      refreshOverlay();
+    } else {
+      JOptionPane.showMessageDialog(frame, "No more alignments found.");
+    }
   }
+
+
+  void tryPreviousAlignment(){
+    if (x.currentAlignmentIndex>0){
+      x.currentAlignmentIndex--;
+      x.clq = x.alignmentHistory.get(x.currentAlignmentIndex);
+      refreshOverlay();
+
+    }
+  }
+  void refreshOverlay() {
+    try {
+      // Close old visualizations
+      if (x.rimg != null) {
+        x.rimg.close();
+        x.rimg = null;
+      }
+      if (x.histPlot != null) {
+        x.histPlot.close();
+        x.histPlot = null;
+      }
+
+      // Reload and transform
+      x.aip.load(x.q_pts, x.k_pts, x.clq);
+      x.transformImages();
+      x.calculateScore();
+      x.createOverlay();
+
+      if (x.show_score) {
+        x.viewScoreWithHistogram();
+        if (x.histPlot != null) x.histPlot.show();
+      }
+
+      saveOK.setEnabled(true);
+      asTIFF.setEnabled(true);
+      asPNG.setEnabled(true);
+
+      updateNavButtons();
+    } catch (Exception e) {
+      e.printStackTrace();
+      JOptionPane.showMessageDialog(frame, "Failed to render selected alignment.");
+    }
+  }
+
+
+
 
   void stepSetZipTarget(JFileChooser chooser) {
     File file = chooser.getSelectedFile();
