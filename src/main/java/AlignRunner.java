@@ -569,13 +569,29 @@ public class AlignRunner implements PlugIn {
       zos.write(m.toJSON().toString().getBytes(StandardCharsets.UTF_8));
 
       JSONObject res = new JSONObject();
-      res.put("alignment", aip.toJSON());
+      res.put("main", aip.toJSON());
+
+      JSONArray others = new JSONArray();
+      for (int i = 0; i < alignmentHistory.size(); i++) {
+        if (i == currentAlignmentIndex) continue;
+        AlignImagePairFromPoints<SimilarityModel2D> tmpAip = new AlignImagePairFromPoints<>(SimilarityModel2D::new);
+        tmpAip.load(q_pts, k_pts, alignmentHistory.get(i));
+        try {
+          tmpAip.estimate();
+          others.put(tmpAip.toJSON());
+        } catch (Exception e) {
+          System.err.println("Failed to estimate alignment for index " + i + ": " + e.getMessage());
+        }
+      }
+      res.put("other_alignments", others);
+
       if (show_score) {
         JSONObject sc = new JSONObject();
         sc.put("name", score_name);
         sc.put("value", score);
         res.put("score", sc);
       }
+
       zos.putNextEntry(new ZipEntry("align_and_score.json"));
       zos.write(res.toString().getBytes(StandardCharsets.UTF_8));
 
