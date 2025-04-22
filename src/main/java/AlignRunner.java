@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.NumberFormat;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -413,6 +414,7 @@ public class AlignRunner implements PlugIn {
     BufferedImage bi;
     Graphics2D g;
     Overlay pts_overlay = new Overlay();
+
     ImageProcessor tmp = q1.createProcessor(q1.getWidth(), q1.getHeight());
     bi = new BufferedImage(tmp.getWidth(), tmp.getHeight(), BufferedImage.TYPE_INT_ARGB);
     g = (Graphics2D) bi.getGraphics();
@@ -420,9 +422,15 @@ public class AlignRunner implements PlugIn {
     g.fillRect(0, 0, q1.getWidth(), q1.getHeight());
     g.setBackground(new Color(0, 0, 0, 0));
     g.setColor(new Color(0, 0, 0, 0));
-    burnPoints(g, qp1, qc_ind, qs, qcol);
-    burnPoints(g, kp1, kc_ind, ks, kcol);
+
+// 💥 Adaptive point rendering:
+    int width = q1.getWidth();
+    burnPoints(g, qp1, qc_ind, new BasicStroke(2f), qcol, width);
+    burnPoints(g, kp1, kc_ind, new BasicStroke(2f), kcol, width);
+
+// Add to ImageJ overlay
     pts_overlay.add(new ImageRoi(0, 0, bi));
+
 
     q1.drawOverlay(pts_overlay);
     q2.drawOverlay(pts_overlay);
@@ -462,15 +470,14 @@ public class AlignRunner implements PlugIn {
     ij.ImageStack q_stack = (ImageStack) q_img.getProperty("stack");
     Point[] qp0 = q_pts;
     ArrayList<Integer> qc_ind = aip.getCorrQ_ind();
-    Stroke qs = new BasicStroke(18F);
-    Color qcol = new Color(0xf8, 0x5d, 0x19, 0xff);
+    Stroke qs = new BasicStroke(1.5F);
+    Color color = Color.BLACK;
 
     ij.ImageStack k_stack = (ImageStack) k_img.getProperty("stack");
     Point[] kp0 = k_pts;
     Point[] kp1 = aip.getMappedK_ptsAsRoi().getContainedPoints();
     ArrayList<Integer> kc_ind = aip.getCorrK_ind();
-    Stroke ks = new BasicStroke(18F);
-    Color kcol = new Color(0x13, 0x83, 0xbd, 0xff);
+    Stroke ks = new BasicStroke(1.5F);
 
     System.out.println("Saving to " + targ_zip);
     DataOutputStream out;
@@ -494,11 +501,9 @@ public class AlignRunner implements PlugIn {
     res_stack.addSlice("Q_mask", rasterize(bi).getProcessor());
 
     /* add Q annotations */
-    bi =
-            getWritableImage(
-                    q_stack.getProcessor(2).createProcessor(q_stack.getWidth(), q_stack.getHeight()));
+    bi = getWritableImage(q_stack.getProcessor(2).createProcessor(q_stack.getWidth(), q_stack.getHeight()));
     g = (Graphics2D) bi.getGraphics();
-    burnPoints(g, qp0, qc_ind, qs, qcol);
+    burnPoints(g, qp0, qc_ind, qs, color, q_stack.getWidth());
     res_stack.addSlice("Q_points", rasterize(bi).getProcessor());
 
     /* add K image */
@@ -510,11 +515,9 @@ public class AlignRunner implements PlugIn {
     res_stack.addSlice("K_mask", rasterize(bi).getProcessor());
 
     /* add K annotations */
-    bi =
-            getWritableImage(
-                    k_stack.getProcessor(2).createProcessor(k_stack.getWidth(), k_stack.getHeight()));
+    bi = getWritableImage(k_stack.getProcessor(2).createProcessor(k_stack.getWidth(), k_stack.getHeight()));
     g = (Graphics2D) bi.getGraphics();
-    burnPoints(g, kp0, kc_ind, ks, kcol);
+    burnPoints(g, kp0, kc_ind, ks, color, k_stack.getWidth());
     res_stack.addSlice("K_points", rasterize(bi).getProcessor());
 
     /* add transformed K image */
@@ -533,7 +536,7 @@ public class AlignRunner implements PlugIn {
     temp = k_stack.getProcessor(2).createProcessor(q_stack.getWidth(), q_stack.getHeight());
     bi = getWritableImage(temp);
     g = (Graphics2D) bi.getGraphics();
-    burnPoints(g, kp1, kc_ind, ks, kcol);
+    burnPoints(g, kp1, kc_ind, ks, color, q_stack.getWidth());
     res_stack.addSlice("K_points_MAPPED", rasterize(bi).getProcessor());
 
     try {
@@ -553,18 +556,13 @@ public class AlignRunner implements PlugIn {
           te = new TiffEncoder(info);
           te.write(out);
         }
-        System.out.println(res_stack.getSliceLabel(j));
       }
 
-      m =
-              MarkupData.fromROIPair(
-                      (PolygonRoi) q_img.getProperty("bounds"), (PointRoi) q_img.getProperty("points"));
+      m = MarkupData.fromROIPair((PolygonRoi) q_img.getProperty("bounds"), (PointRoi) q_img.getProperty("points"));
       zos.putNextEntry(new ZipEntry("Q_markup.json"));
       zos.write(m.toJSON().toString().getBytes(StandardCharsets.UTF_8));
 
-      m =
-              MarkupData.fromROIPair(
-                      (PolygonRoi) k_img.getProperty("bounds"), (PointRoi) k_img.getProperty("points"));
+      m = MarkupData.fromROIPair((PolygonRoi) k_img.getProperty("bounds"), (PointRoi) k_img.getProperty("points"));
       zos.putNextEntry(new ZipEntry("K_markup.json"));
       zos.write(m.toJSON().toString().getBytes(StandardCharsets.UTF_8));
 
@@ -604,17 +602,27 @@ public class AlignRunner implements PlugIn {
     }
   }
 
-  void burnPoints(Graphics2D g, Point[] pts, ArrayList<Integer> clq_ind, Stroke s, Color c) {
+
+  void burnPoints(Graphics2D g, Point[] pts, ArrayList<Integer> clq_ind, Stroke s, Color c, int imgWidth) {
     g.setStroke(s);
     g.setPaint(c);
+
+    int radius = Math.max(imgWidth / 50, 6);  // Ensures bigger shapes on most resolutions
+
     for (int j = 0; j < pts.length; ++j) {
+
       if (clq_ind.contains(j)) {
-        g.drawRect(pts[j].x, pts[j].y, 53, 53);
+        // Aligned = draw filled square
+        g.fillRect(pts[j].x - radius / 2, pts[j].y - radius / 2, radius, radius);
       } else {
-        g.drawOval(pts[j].x, pts[j].y, 75, 75);
+        // Not aligned = draw filled circle
+        g.fillOval(pts[j].x - radius / 2, pts[j].y - radius / 2, radius, radius);
       }
     }
   }
+
+
+
 }
 
 class ProgressInterruptListener implements ActionListener {
@@ -664,10 +672,13 @@ class AlignProgression {
     loadUI();
     loadReactions();
   }
+  int row = 0;
+
+
+
 
   void loadUI() {
-    frame = new JFrame();
-    frame.setTitle("processing....");
+    frame = new JFrame("processing....");
     frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
     frame.setSize(320, 240);
 
@@ -675,13 +686,15 @@ class AlignProgression {
     subpanel = new JPanel(layout);
     gbc = new GridBagConstraints();
     gbc.fill = GridBagConstraints.HORIZONTAL;
+    gbc.insets = new Insets(5, 5, 5, 5);
 
     bar = new JProgressBar();
     currentWork = new JLabel();
     saveOK = new JButton("Save Info");
     cancelRun = new JButton("Cancel");
     nextMax = new JButton("Next Alignment");
-    prevMax= new JButton("Previous Alignment");
+    prevMax = new JButton("Previous Alignment");
+
     imgtype = new ButtonGroup();
     asPNG = new JRadioButton("PNG");
     asTIFF = new JRadioButton("TIFF");
@@ -690,62 +703,28 @@ class AlignProgression {
     asTIFF.setSelected(true);
     asPNG.setSelected(false);
 
-    gbc.gridx = 0;
-    gbc.ipady = 40;
-    gbc.gridy = 0;
-    gbc.gridwidth = 4;
-    layout.setConstraints(currentWork, gbc);
-    subpanel.add(currentWork, gbc);
+    int[] row = {0};
 
-    gbc.gridx = 0;
-    gbc.gridy = 1;
-    gbc.ipady = 20;
-    gbc.gridwidth = 4;
-    layout.setConstraints(bar, gbc);
-    subpanel.add(bar, gbc);
+    Consumer<Component[]> addRow = (Component[] components) -> {
+      gbc.gridy = row[0]++;
+      gbc.gridx = 0;
+      for (Component c : components) {
+        gbc.gridwidth = 1;
+        subpanel.add(c, gbc);
+        gbc.gridx++;
+      }
+    };
 
-    gbc.gridx = 0;
-    gbc.gridy = 2;
-    gbc.ipady = 30;
-    gbc.gridwidth = 2;
-    layout.setConstraints(saveOK, gbc);
-    subpanel.add(saveOK, gbc);
-
-    gbc.gridx = 2;
-    gbc.gridy = 2;
-    gbc.ipady = 30;
-    gbc.gridwidth = 2;
-    layout.setConstraints(cancelRun, gbc);
-    subpanel.add(cancelRun, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = 3;
-    gbc.ipady = 0;
-    gbc.gridwidth = 1;
-    layout.setConstraints(asPNG, gbc);
-    subpanel.add(asPNG, gbc);
-    gbc.gridx = 1;
-    gbc.gridy = 3;
-    gbc.ipady = 0;
-    gbc.gridwidth = 1;
-    layout.setConstraints(asTIFF, gbc);
-    subpanel.add(asTIFF, gbc);
-    gbc.gridx = 0;
-    gbc.gridy = 4;
-    gbc.gridwidth = 2;
-    layout.setConstraints(prevMax, gbc);
-    subpanel.add(prevMax, gbc);
-
-    gbc.gridx = 2;
-    gbc.gridy = 4;
-    gbc.gridwidth = 2;
-    layout.setConstraints(nextMax, gbc);
-    subpanel.add(nextMax, gbc);
-
+    addRow.accept(new Component[]{currentWork});
+    addRow.accept(new Component[]{bar});
+    addRow.accept(new Component[]{saveOK, cancelRun});
+    addRow.accept(new Component[]{asPNG, asTIFF});
+    addRow.accept(new Component[]{prevMax, nextMax});
 
     frame.setContentPane(subpanel);
     frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
   }
+
 
   void loadReactions() {
     nextMax.setEnabled(false);
@@ -1228,282 +1207,282 @@ class AlignImagePairFromPoints<T extends mpicbg.models.AbstractModel<T>> {
 
 
 
-  class AlignRunnerGUI {
-    private final JComboBox<String> Q_imgs;
-    private final JComboBox<String> K_imgs;
-    private final JFormattedTextField minRatioT;
-    private final JFormattedTextField maxRatioT;
-    private final JSlider deltaT;
-    private final JSlider epsilonT;
-    private final JLabel deltaTVal;
-    private final JLabel epsilonTVal;
-    private final JFormattedTextField lowerBoundT;
-    private final JLabel Qimg_points;
-    private final JLabel Kimg_points;
-    private final JCheckBox showScoreT;
-    private final JComboBox<String> scoreNamesT;
-    private final JPanel panel;
-    private final JTextArea dummy;
-    private final HashMap<String, ImagePlus> imgmap;
-    private boolean uiLoaded;
+class AlignRunnerGUI {
+  private final JComboBox<String> Q_imgs;
+  private final JComboBox<String> K_imgs;
+  private final JFormattedTextField minRatioT;
+  private final JFormattedTextField maxRatioT;
+  private final JSlider deltaT;
+  private final JSlider epsilonT;
+  private final JLabel deltaTVal;
+  private final JLabel epsilonTVal;
+  private final JFormattedTextField lowerBoundT;
+  private final JLabel Qimg_points;
+  private final JLabel Kimg_points;
+  private final JCheckBox showScoreT;
+  private final JComboBox<String> scoreNamesT;
+  private final JPanel panel;
+  private final JTextArea dummy;
+  private final HashMap<String, ImagePlus> imgmap;
+  private boolean uiLoaded;
 
-    public AlignRunnerGUI() {
-      this.panel = new JPanel(new GridLayout(7, 4));
-      this.dummy = new JTextArea();
-      this.imgmap = new HashMap<>();
-      this.Q_imgs = new JComboBox<>();
-      Q_imgs.setEditable(false);
-      this.Qimg_points = new JLabel();
-      this.K_imgs = new JComboBox<>();
-      K_imgs.setEditable(false);
-      this.Kimg_points = new JLabel();
-      this.minRatioT = new JFormattedTextField(NumberFormat.getInstance());
-      this.maxRatioT = new JFormattedTextField(NumberFormat.getInstance());
-      this.deltaT = new JSlider(1, 25);
-      this.deltaT.setValue(10);
-      this.epsilonT = new JSlider(1, 25);
-      this.epsilonT.setValue(10);
-      this.deltaTVal = new JLabel((deltaT.getValue() / 10.0) + " degrees");
-      this.epsilonTVal = new JLabel((epsilonT.getValue() / 10.0) + " units");
-      this.lowerBoundT = new JFormattedTextField(NumberFormat.getInstance());
-      this.showScoreT = new JCheckBox("Similarity Score?");
-      this.scoreNamesT = new JComboBox<>();
-      this.uiLoaded = false;
-      this.loadUI();
-    }
-
-    void cannotStart() {
-      dummy.setText("You need to have 2 valid images open!");
-      uiLoaded = false;
-    }
-
-    boolean UICheck() {
-      int[] idList = WindowManager.getIDList();
-      int valid_images = 0;
-      if (idList == null || idList.length < 2) {
-        cannotStart();
-        return false;
-      }
-      for (int id : idList) {
-        ImagePlus img = WindowManager.getImage(id);
-        if (img == null) {
-          continue;
-        }
-        PolygonRoi pol = (PolygonRoi) img.getProperty("bounds");
-        PointRoi pts = (PointRoi) img.getProperty("points");
-        String name = (String) img.getProperty("name");
-        if (pol == null || pts == null || name == null) {
-          continue;
-        }
-        valid_images += 1;
-      }
-      if (valid_images < 2) {
-        cannotStart();
-        return false;
-      }
-      return true;
-    }
-
-    void loadUI() {
-      if (!UICheck()) {
-        panel.add(dummy);
-        return;
-      }
-
-      int[] idList = WindowManager.getIDList();
-      ImagePlus tmp;
-      for (int id : idList) {
-        tmp = WindowManager.getImage(id);
-        if (tmp.getProperty("points") == null) continue;
-        if (tmp.getProperty("bounds") == null) continue;
-        if (tmp.getProperty("name") == null) continue;
-        imgmap.put((String) tmp.getProperty("name"), tmp);
-        Q_imgs.addItem((String) tmp.getProperty("name"));
-        K_imgs.addItem((String) tmp.getProperty("name"));
-      }
-      panel.add(new JLabel("Questioned Image:"));
-      panel.add(Q_imgs);
-      panel.add(new JLabel("Reference Image:"));
-      panel.add(K_imgs);
-
-      panel.add(new JLabel(""));
-      panel.add(Qimg_points);
-      panel.add(new JLabel(""));
-      panel.add(Kimg_points);
-
-      panel.add(new JLabel("Scale difference is around:"));
-      panel.add(minRatioT);
-      panel.add(new JLabel("and"));
-      panel.add(maxRatioT);
-
-      Dictionary<Integer, JLabel> dict = new Hashtable<>();
-      dict.put(1, new JLabel("0.1"));
-      dict.put(25, new JLabel("2.5"));
-      this.deltaT.setLabelTable(dict);
-      this.epsilonT.setLabelTable(dict);
-      this.deltaT.setPaintLabels(true);
-      this.epsilonT.setPaintLabels(true);
-
-      deltaT.addChangeListener(
-              e -> {
-                if (deltaT.getValueIsAdjusting()) {
-                  deltaTVal.setText((deltaT.getValue() / 10.0) + " degrees");
-                }
-              });
-
-      epsilonT.addChangeListener(
-              e -> {
-                if (epsilonT.getValueIsAdjusting()) {
-                  epsilonTVal.setText((epsilonT.getValue() / 10.0) + " units");
-                }
-              });
-
-      panel.add(new JLabel("Maximum Angular Distortion"));
-      panel.add(deltaT);
-      panel.add(deltaTVal);
-      panel.add(new JLabel(""));
-
-      panel.add(new JLabel("Maximum Scaling Distortion"));
-      panel.add(epsilonT);
-      panel.add(epsilonTVal);
-      panel.add(new JLabel(""));
-
-      panel.add(new JLabel("Must Have At Least"));
-      panel.add(lowerBoundT);
-      panel.add(new JLabel("points in common"));
-      panel.add(new JLabel(""));
-
-      panel.add(showScoreT);
-      panel.add(scoreNamesT);
-      scoreNamesT.addItem("clique_fraction"); // ///////
-      panel.add(new JLabel(""));
-      panel.add(new JLabel(""));
-
-      uiLoaded = true;
-    }
-
-    void missingMarkup(ImagePlus img) {
-      this.dummy.setText("The Image: " + img.getProperty("name") + " is not loaded properly!");
-      this.uiLoaded = false;
-    }
-
-    void getNumPoints(ImagePlus img, JLabel targ) {
-      if (img == null) return;
-      PointRoi r = (PointRoi) img.getProperty("points");
-      targ.setText(r.size() + " points");
-    }
-
-    void loadReactions() {
-      this.minRatioT.setText("0.8");
-      this.maxRatioT.setText("1.2");
-      this.lowerBoundT.setText("5");
-      this.showScoreT.setSelected(true);
-      this.Q_imgs.setSelectedIndex(0);
-      this.K_imgs.setSelectedIndex(1);
-
-      this.Q_imgs.addActionListener(
-              new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                  ImagePlus z1 = imgmap.get(Q_imgs.getSelectedItem());
-                  PointRoi r1 = (PointRoi) z1.getProperty("points");
-                  Qimg_points.setText(r1.size() + " points");
-                  ImagePlus z2 = imgmap.get(K_imgs.getSelectedItem());
-                  PointRoi r2 = (PointRoi) z2.getProperty("points");
-                  int lb = Math.min(r1.size(), r2.size());
-                  lb = (int) Math.floor(0.6 * (double) lb);
-                  lb = Math.max(lb, 5);
-                  lowerBoundT.setText(String.valueOf(lb));
-                }
-              });
-
-      this.Q_imgs.addActionListener(
-              new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                  getNumPoints(imgmap.get(Q_imgs.getSelectedItem()), Qimg_points);
-                }
-              });
-
-      this.K_imgs.addActionListener(
-              new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                  ImagePlus z1 = imgmap.get(Q_imgs.getSelectedItem());
-                  PointRoi r1 = (PointRoi) z1.getProperty("points");
-                  Qimg_points.setText(r1.size() + " points");
-                  ImagePlus z2 = imgmap.get(K_imgs.getSelectedItem());
-                  PointRoi r2 = (PointRoi) z2.getProperty("points");
-                  int lb = Math.min(r1.size(), r2.size());
-                  lb = (int) Math.floor(0.6 * (double) lb);
-                  lb = Math.max(lb, 5);
-                  lowerBoundT.setText(String.valueOf(lb));
-                }
-              });
-
-      this.K_imgs.addActionListener(
-              new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                  getNumPoints(imgmap.get(K_imgs.getSelectedItem()), Kimg_points);
-                }
-              });
-
-      this.showScoreT.addActionListener(
-              new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                  scoreNamesT.setEnabled(showScoreT.isSelected());
-                }
-              });
-
-      this.getNumPoints(imgmap.get(K_imgs.getSelectedItem()), Kimg_points);
-      this.getNumPoints(imgmap.get(Q_imgs.getSelectedItem()), Qimg_points);
-    }
-
-    public JPanel getPanel() {
-      return panel;
-    }
-
-    public boolean isUiLoaded() {
-      return uiLoaded;
-    }
-
-    public ImagePlus getQImg() {
-      return imgmap.get(Q_imgs.getSelectedItem());
-    }
-
-    public ImagePlus getKImg() {
-      return imgmap.get(K_imgs.getSelectedItem());
-    }
-
-    public double getMinRatio() {
-      return Double.parseDouble(minRatioT.getText());
-    }
-
-    public double getMaxRatio() {
-      return Double.parseDouble(maxRatioT.getText());
-    }
-
-    public double getDelta() {
-      /* angular distortion: convert degrees to radians */
-      return (deltaT.getValue() / 10.0) * (Math.PI) / 180.0;
-    }
-
-    public double getEpsilon() {
-      /* scaling distortion: unclear what units this is */
-      return epsilonT.getValue() / 10.0;
-    }
-
-    public int getLowerBound() {
-      return Integer.parseInt(lowerBoundT.getText());
-    }
-
-    public boolean getShowScore() {
-      return showScoreT.isSelected();
-    }
-
-    public String getScoreName() {
-      return (String) scoreNamesT.getSelectedItem();
-    }
+  public AlignRunnerGUI() {
+    this.panel = new JPanel(new GridLayout(7, 4));
+    this.dummy = new JTextArea();
+    this.imgmap = new HashMap<>();
+    this.Q_imgs = new JComboBox<>();
+    Q_imgs.setEditable(false);
+    this.Qimg_points = new JLabel();
+    this.K_imgs = new JComboBox<>();
+    K_imgs.setEditable(false);
+    this.Kimg_points = new JLabel();
+    this.minRatioT = new JFormattedTextField(NumberFormat.getInstance());
+    this.maxRatioT = new JFormattedTextField(NumberFormat.getInstance());
+    this.deltaT = new JSlider(1, 25);
+    this.deltaT.setValue(10);
+    this.epsilonT = new JSlider(1, 25);
+    this.epsilonT.setValue(10);
+    this.deltaTVal = new JLabel((deltaT.getValue() / 10.0) + " degrees");
+    this.epsilonTVal = new JLabel((epsilonT.getValue() / 10.0) + " units");
+    this.lowerBoundT = new JFormattedTextField(NumberFormat.getInstance());
+    this.showScoreT = new JCheckBox("Similarity Score?");
+    this.scoreNamesT = new JComboBox<>();
+    this.uiLoaded = false;
+    this.loadUI();
   }
+
+  void cannotStart() {
+    dummy.setText("You need to have 2 valid images open!");
+    uiLoaded = false;
+  }
+
+  boolean UICheck() {
+    int[] idList = WindowManager.getIDList();
+    int valid_images = 0;
+    if (idList == null || idList.length < 2) {
+      cannotStart();
+      return false;
+    }
+    for (int id : idList) {
+      ImagePlus img = WindowManager.getImage(id);
+      if (img == null) {
+        continue;
+      }
+      PolygonRoi pol = (PolygonRoi) img.getProperty("bounds");
+      PointRoi pts = (PointRoi) img.getProperty("points");
+      String name = (String) img.getProperty("name");
+      if (pol == null || pts == null || name == null) {
+        continue;
+      }
+      valid_images += 1;
+    }
+    if (valid_images < 2) {
+      cannotStart();
+      return false;
+    }
+    return true;
+  }
+
+  void loadUI() {
+    if (!UICheck()) {
+      panel.add(dummy);
+      return;
+    }
+
+    int[] idList = WindowManager.getIDList();
+    ImagePlus tmp;
+    for (int id : idList) {
+      tmp = WindowManager.getImage(id);
+      if (tmp.getProperty("points") == null) continue;
+      if (tmp.getProperty("bounds") == null) continue;
+      if (tmp.getProperty("name") == null) continue;
+      imgmap.put((String) tmp.getProperty("name"), tmp);
+      Q_imgs.addItem((String) tmp.getProperty("name"));
+      K_imgs.addItem((String) tmp.getProperty("name"));
+    }
+    panel.add(new JLabel("Questioned Image:"));
+    panel.add(Q_imgs);
+    panel.add(new JLabel("Reference Image:"));
+    panel.add(K_imgs);
+
+    panel.add(new JLabel(""));
+    panel.add(Qimg_points);
+    panel.add(new JLabel(""));
+    panel.add(Kimg_points);
+
+    panel.add(new JLabel("Scale difference is around:"));
+    panel.add(minRatioT);
+    panel.add(new JLabel("and"));
+    panel.add(maxRatioT);
+
+    Dictionary<Integer, JLabel> dict = new Hashtable<>();
+    dict.put(1, new JLabel("0.1"));
+    dict.put(25, new JLabel("2.5"));
+    this.deltaT.setLabelTable(dict);
+    this.epsilonT.setLabelTable(dict);
+    this.deltaT.setPaintLabels(true);
+    this.epsilonT.setPaintLabels(true);
+
+    deltaT.addChangeListener(
+            e -> {
+              if (deltaT.getValueIsAdjusting()) {
+                deltaTVal.setText((deltaT.getValue() / 10.0) + " degrees");
+              }
+            });
+
+    epsilonT.addChangeListener(
+            e -> {
+              if (epsilonT.getValueIsAdjusting()) {
+                epsilonTVal.setText((epsilonT.getValue() / 10.0) + " units");
+              }
+            });
+
+    panel.add(new JLabel("Maximum Angular Distortion"));
+    panel.add(deltaT);
+    panel.add(deltaTVal);
+    panel.add(new JLabel(""));
+
+    panel.add(new JLabel("Maximum Scaling Distortion"));
+    panel.add(epsilonT);
+    panel.add(epsilonTVal);
+    panel.add(new JLabel(""));
+
+    panel.add(new JLabel("Must Have At Least"));
+    panel.add(lowerBoundT);
+    panel.add(new JLabel("points in common"));
+    panel.add(new JLabel(""));
+
+    panel.add(showScoreT);
+    panel.add(scoreNamesT);
+    scoreNamesT.addItem("clique_fraction"); // ///////
+    panel.add(new JLabel(""));
+    panel.add(new JLabel(""));
+
+    uiLoaded = true;
+  }
+
+  void missingMarkup(ImagePlus img) {
+    this.dummy.setText("The Image: " + img.getProperty("name") + " is not loaded properly!");
+    this.uiLoaded = false;
+  }
+
+  void getNumPoints(ImagePlus img, JLabel targ) {
+    if (img == null) return;
+    PointRoi r = (PointRoi) img.getProperty("points");
+    targ.setText(r.size() + " points");
+  }
+
+  void loadReactions() {
+    this.minRatioT.setText("0.8");
+    this.maxRatioT.setText("1.2");
+    this.lowerBoundT.setText("5");
+    this.showScoreT.setSelected(true);
+    this.Q_imgs.setSelectedIndex(0);
+    this.K_imgs.setSelectedIndex(1);
+
+    this.Q_imgs.addActionListener(
+            new ActionListener() {
+              @Override
+              public void actionPerformed(ActionEvent e) {
+                ImagePlus z1 = imgmap.get(Q_imgs.getSelectedItem());
+                PointRoi r1 = (PointRoi) z1.getProperty("points");
+                Qimg_points.setText(r1.size() + " points");
+                ImagePlus z2 = imgmap.get(K_imgs.getSelectedItem());
+                PointRoi r2 = (PointRoi) z2.getProperty("points");
+                int lb = Math.min(r1.size(), r2.size());
+                lb = (int) Math.floor(0.6 * (double) lb);
+                lb = Math.max(lb, 5);
+                lowerBoundT.setText(String.valueOf(lb));
+              }
+            });
+
+    this.Q_imgs.addActionListener(
+            new ActionListener() {
+              @Override
+              public void actionPerformed(ActionEvent e) {
+                getNumPoints(imgmap.get(Q_imgs.getSelectedItem()), Qimg_points);
+              }
+            });
+
+    this.K_imgs.addActionListener(
+            new ActionListener() {
+              @Override
+              public void actionPerformed(ActionEvent e) {
+                ImagePlus z1 = imgmap.get(Q_imgs.getSelectedItem());
+                PointRoi r1 = (PointRoi) z1.getProperty("points");
+                Qimg_points.setText(r1.size() + " points");
+                ImagePlus z2 = imgmap.get(K_imgs.getSelectedItem());
+                PointRoi r2 = (PointRoi) z2.getProperty("points");
+                int lb = Math.min(r1.size(), r2.size());
+                lb = (int) Math.floor(0.6 * (double) lb);
+                lb = Math.max(lb, 5);
+                lowerBoundT.setText(String.valueOf(lb));
+              }
+            });
+
+    this.K_imgs.addActionListener(
+            new ActionListener() {
+              @Override
+              public void actionPerformed(ActionEvent e) {
+                getNumPoints(imgmap.get(K_imgs.getSelectedItem()), Kimg_points);
+              }
+            });
+
+    this.showScoreT.addActionListener(
+            new ActionListener() {
+              @Override
+              public void actionPerformed(ActionEvent e) {
+                scoreNamesT.setEnabled(showScoreT.isSelected());
+              }
+            });
+
+    this.getNumPoints(imgmap.get(K_imgs.getSelectedItem()), Kimg_points);
+    this.getNumPoints(imgmap.get(Q_imgs.getSelectedItem()), Qimg_points);
+  }
+
+  public JPanel getPanel() {
+    return panel;
+  }
+
+  public boolean isUiLoaded() {
+    return uiLoaded;
+  }
+
+  public ImagePlus getQImg() {
+    return imgmap.get(Q_imgs.getSelectedItem());
+  }
+
+  public ImagePlus getKImg() {
+    return imgmap.get(K_imgs.getSelectedItem());
+  }
+
+  public double getMinRatio() {
+    return Double.parseDouble(minRatioT.getText());
+  }
+
+  public double getMaxRatio() {
+    return Double.parseDouble(maxRatioT.getText());
+  }
+
+  public double getDelta() {
+    /* angular distortion: convert degrees to radians */
+    return (deltaT.getValue() / 10.0) * (Math.PI) / 180.0;
+  }
+
+  public double getEpsilon() {
+    /* scaling distortion: unclear what units this is */
+    return epsilonT.getValue() / 10.0;
+  }
+
+  public int getLowerBound() {
+    return Integer.parseInt(lowerBoundT.getText());
+  }
+
+  public boolean getShowScore() {
+    return showScoreT.isSelected();
+  }
+
+  public String getScoreName() {
+    return (String) scoreNamesT.getSelectedItem();
+  }
+}
